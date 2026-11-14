@@ -1,0 +1,3 @@
+; Opcional y avanzado: el usuario normal NO necesita crear este archivo.
+relay_url=https://relay-del-desarrollador.workers.dev
+; Nunca agregues passwords, Client Secret ni tokens a paquetes publicos.
