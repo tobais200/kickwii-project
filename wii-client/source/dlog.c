@@ -1,5 +1,5 @@
 /*
- * dlog.c - registro de diagnostico para la Wii real (KickWii 1.3-rc8).
+ * dlog.c - registro de diagnostico para la Wii real (KickWii 1.3-rc8; rc11: solo en sd:/usb: montado).
  * Escribe sd:/apps/KickWii/log.txt (la sesion anterior queda en log-anterior.txt).
  * Se desactiva creando sd:/apps/KickWii/nolog.txt. Tope: 1 MB por sesion.
  * Nunca se registran tokens: las URLs se reducen al host.
@@ -15,7 +15,9 @@
 #include <ogc/lwp_watchdog.h>
 #include "dlog.h"
 
-#define DLOG_DIR   "sd:/apps/KickWii/"
+int fs_dev_mounted(const char *path);
+static char dlog_dir[40] = "sd:/apps/KickWii/";
+#define DLOG_DIR dlog_dir
 #define DLOG_BUF   (24 * 1024)
 #define DLOG_MAX   (1024 * 1024)
 static char buf[DLOG_BUF];
@@ -39,12 +41,24 @@ void dlog_init(int sd_ok) {
     if (!mtx_ok) { LWP_MutexInit(&m, false); mtx_ok = 1; }
     t0 = gettime();
     on = 0;
+    char p[80], p2[80];
     if (!sd_ok) return;
-    if (stat(DLOG_DIR "nolog.txt", &st) == 0) return;
-    mkdir("sd:/apps", 0777); mkdir("sd:/apps/KickWii", 0777);
-    remove(DLOG_DIR "log-anterior.txt");
-    rename(DLOG_DIR "log.txt", DLOG_DIR "log-anterior.txt");
-    FILE *f = fopen(DLOG_DIR "log.txt", "w");
+    /* rc11: fatInitDefault() es verdadero aunque solo monte "usb:"; antes se
+     * hacia mkdir("sd:/apps") igual y libsysbase leia devoptab_list[-1] (NULL)
+     * -> excepcion DSI al arrancar en la Wii real. Ahora se usa solo un
+     * dispositivo realmente montado. */
+    if (fs_dev_mounted("sd:/")) { snprintf(dlog_dir, sizeof(dlog_dir), "sd:/apps/KickWii/"); mkdir("sd:/apps", 0777); }
+    else if (fs_dev_mounted("usb:/")) { snprintf(dlog_dir, sizeof(dlog_dir), "usb:/apps/KickWii/"); mkdir("usb:/apps", 0777); }
+    else return;
+    snprintf(p, sizeof(p), "%snolog.txt", dlog_dir);
+    if (stat(p, &st) == 0) return;
+    snprintf(p, sizeof(p), "%.*s", (int)strlen(dlog_dir) - 1, dlog_dir);
+    mkdir(p, 0777);
+    snprintf(p, sizeof(p), "%slog-anterior.txt", dlog_dir);
+    remove(p);
+    snprintf(p2, sizeof(p2), "%slog.txt", dlog_dir);
+    rename(p2, p);
+    FILE *f = fopen(p2, "w");
     if (!f) return;
     fclose(f);
     on = 1; written = 0;
@@ -81,7 +95,8 @@ void dlog_flush(int force) {
     LWP_MutexUnlock(m);
     if (!n && !dr) return;
     if (written > DLOG_MAX) return;
-    FILE *f = fopen(DLOG_DIR "log.txt", "a");
+    char lp[80]; snprintf(lp, sizeof(lp), "%slog.txt", dlog_dir);
+    FILE *f = fopen(lp, "a");
     if (!f) return;
     if (n) fwrite(out, 1, n, f);
     if (dr) fprintf(f, "(%d lineas perdidas: buffer lleno)\n", dr);
