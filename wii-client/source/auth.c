@@ -78,14 +78,23 @@ static void field(const char *json,const char *key,char *out,int sz){const char 
 static long numeric_field(const char*json,const char*key){const char*p=jget(json,key);if(!p)return 0;p=jws(p);if(*p!='"')return (long)jnum(p);char b[32],*end;field(json,key,b,sizeof(b));errno=0;long v=strtol(b,&end,10);return errno||end==b||*end?0:v;}
 static int safe_value(const char *s,size_t max){size_t n=strlen(s);if(!n||n>=max)return 0;for(size_t i=0;i<n;i++)if((unsigned char)s[i]<33||(unsigned char)s[i]>126)return 0;return 1;}
 static int identifier(const char*s){size_t n=strlen(s);if(n<4||n>128||strstr(s,"TODO")||strstr(s,"PLACEHOLDER"))return 0;for(size_t i=0;i<n;i++)if(!isalnum((unsigned char)s[i])&&s[i]!='-'&&s[i]!='_')return 0;return 1;}
+/* rc12: la sesion se guarda en el dispositivo montado (SD primero, si no USB).
+ * Antes era siempre sd:/: sin SD (solo USB) el guardado fallaba y la cuenta
+ * quedaba solo en RAM, asi que al salir y volver a entrar se perdia. */
+#ifdef AUTH_HOST_TEST
+static int cfg_dirs(char d[2][96],int create){(void)create;snprintf(d[0],96,"%s",TV_CFG_DIR);mkdir(TV_CFG_DIR,0777);return 1;}
+#else
+static int cfg_dirs(char d[2][96],int create){return fs_data_dirs(TV_APP_NAME,d,create);}
+#endif
 static int atom(const char *fn,const void *bytes,size_t n){
- mkdir("sd:/apps",0777);mkdir(TV_CFG_DIR,0777);
- char path[192],tmp[256],bak[256];snprintf(path,sizeof(path),TV_CFG_DIR "%s",fn);snprintf(tmp,sizeof(tmp),"%s.tmp",path);snprintf(bak,sizeof(bak),"%s.bak",path);
- FILE*f=fopen(tmp,"wb");if(!f)return 0;int ok=fwrite(bytes,1,n,f)==n;ok=fclose(f)==0&&ok;if(!ok){remove(tmp);return 0;}
+ char d[2][96];if(cfg_dirs(d,1)<1)return 0;
+ char path[192],tmp[256],bak[256];snprintf(path,sizeof(path),"%s%s",d[0],fn);snprintf(tmp,sizeof(tmp),"%s.tmp",path);snprintf(bak,sizeof(bak),"%s.bak",path);
+ FILE*f=fopen(tmp,"wb");if(!f)return 0;int ok=fwrite(bytes,1,n,f)==n;ok=fflush(f)==0&&ok;ok=fclose(f)==0&&ok;if(!ok){remove(tmp);return 0;}
  remove(bak);int had=rename(path,bak)==0;if(rename(tmp,path)){if(had)rename(bak,path);remove(tmp);return 0;}remove(bak);return 1;
 }
-static int readfile(const char *fn,char *buf,int cap){char path[256];snprintf(path,sizeof(path),TV_CFG_DIR "%s",fn);FILE*f=fopen(path,"rb");if(!f){snprintf(path,sizeof(path),TV_CFG_DIR "%s.bak",fn);f=fopen(path,"rb");}if(!f)return 0;size_t n=fread(buf,1,cap-1,f);int extra=fgetc(f);fclose(f);buf[n]=0;return extra==EOF?(int)n:0;}
-static void erasefile(const char*fn){char p[256];const char *suffix[]={"",".bak",".tmp"};for(int i=0;i<3;i++){snprintf(p,sizeof(p),TV_CFG_DIR "%s%s",fn,suffix[i]);remove(p);}}
+static int readfile(const char *fn,char *buf,int cap){char d[2][96];int nd=cfg_dirs(d,0);for(int i=0;i<nd;i++)for(int b=0;b<2;b++){char path[256];snprintf(path,sizeof(path),"%s%s%s",d[i],fn,b?".bak":"");FILE*f=fopen(path,"rb");if(!f)continue;size_t n=fread(buf,1,cap-1,f);int extra=fgetc(f);fclose(f);buf[n]=0;if(extra==EOF&&n)return (int)n;}buf[0]=0;return 0;}
+static void erasefile(const char*fn){char d[2][96];int nd=cfg_dirs(d,0);const char *suffix[]={"",".bak",".tmp"};for(int i=0;i<nd;i++)for(int k=0;k<3;k++){char p[256];snprintf(p,sizeof(p),"%s%s%s",d[i],fn,suffix[k]);remove(p);}}
+static char saved_login[64];
 static int relay_ok(const char*s){
  if(!s||strlen(s)<9||strlen(s)>350||strstr(s,"TODO")||strstr(s,"PLACEHOLDER")||strpbrk(s,"?#@ \r\n\t"))return 0;
 #ifdef AUTH_MOCK
@@ -175,14 +184,15 @@ const char*auth_scopes(void){return scope_have;}
 const char*auth_avatar(void){return avatar_url;}
 unsigned long auth_uid(void){return user_num;}
 const char*auth_relay(void){return relay;}
-static int persist_tokens(void){size_t cap=1024+2*TOKEN_MAX;char*b=malloc(cap);if(!b)return 0;int n=snprintf(b,cap,"client_id=%s\nissuer=%s\naccess_token=%s\nrefresh_token=%s\nexpires=%lld\nscope=%s\n",cid,relay,token,refresh,(long long)expires,scope_have);int ok=n>0&&(size_t)n<cap&&atom("oauth-tokens.txt",b,n);memset(b,0,cap);free(b);return ok;}
-void auth_logout(void){follow_scope=0;user_id[0]=0;scope_have[0]=avatar_url[0]=0;user_num=0;flow_active=0;poll_at_ms=0;ready=0;memset(token,0,sizeof(token));memset(refresh,0,sizeof(refresh));memset(device,0,sizeof(device));name[0]=link[0]=ucode[0]=0;expires=checked=pending_until=next_poll=retry_after=last_send=0;erasefile("oauth-tokens.txt");erasefile("oauth-pending.txt");erasefile("oauth-callback.txt");erasefile("oauth-url.txt");snprintf(info,sizeof(info),"Sesión cerrada en esta SD");}
+static int persist_tokens(void){size_t cap=1024+2*TOKEN_MAX;char*b=malloc(cap);if(!b)return 0;int n=snprintf(b,cap,"client_id=%s\nissuer=%s\naccess_token=%s\nrefresh_token=%s\nexpires=%lld\nscope=%s\nlogin=%s\nuser_num=%lu\navatar=%s\n",cid,relay,token,refresh,(long long)expires,scope_have,name,user_num,avatar_url);int ok=n>0&&(size_t)n<cap&&atom("oauth-tokens.txt",b,n);if(ok)snprintf(saved_login,sizeof(saved_login),"%s",name);memset(b,0,cap);free(b);return ok;}
+void auth_logout(void){follow_scope=0;user_id[0]=0;scope_have[0]=avatar_url[0]=0;user_num=0;flow_active=0;poll_at_ms=0;ready=0;memset(token,0,sizeof(token));memset(refresh,0,sizeof(refresh));memset(device,0,sizeof(device));name[0]=link[0]=ucode[0]=0;expires=checked=pending_until=next_poll=retry_after=last_send=0;saved_login[0]=0;erasefile("oauth-tokens.txt");erasefile("oauth-pending.txt");erasefile("oauth-callback.txt");erasefile("oauth-url.txt");snprintf(info,sizeof(info),"Sesión cerrada en esta SD");}
 static int tokens(const char *json,int is_refresh){
- (void)is_refresh;
  char nt[TOKEN_MAX],nr[TOKEN_MAX];field(json,"access_token",nt,sizeof(nt));field(json,"refresh_token",nr,sizeof(nr));long life=numeric_field(json,"expires_in");
+ /* rc12: al renovar, si el proveedor no repite refresh_token/scope se conservan los anteriores. */
+ if(is_refresh&&!nr[0]&&refresh[0])snprintf(nr,sizeof(nr),"%s",refresh);int keep_scope=is_refresh&&!jget(json,"scope");
  if(!safe_value(nt,sizeof(nt))||!safe_value(nr,sizeof(nr))||life<30||life>31536000){snprintf(info,sizeof(info),"Respuesta OAuth incompleta; inicia sesion otra vez");return 0;}
- if(!scopes_ok(json,"scope")){snprintf(info,sizeof(info),"Faltan permisos de chat; vuelve a autorizar");return 0;}
- scope_capture(json);snprintf(token,sizeof(token),"%s",nt);snprintf(refresh,sizeof(refresh),"%s",nr);expires=sh_clock_now()+life;ready=0;checked=retry_after=0;
+ if(!keep_scope&&!scopes_ok(json,"scope")){snprintf(info,sizeof(info),"Faltan permisos de chat; vuelve a autorizar");return 0;}
+ if(!keep_scope)scope_capture(json);snprintf(token,sizeof(token),"%s",nt);snprintf(refresh,sizeof(refresh),"%s",nr);expires=sh_clock_now()+life;ready=0;checked=retry_after=0;
  memset(nt,0,sizeof(nt));memset(nr,0,sizeof(nr));int saved=persist_tokens();storage_failed=!saved;snprintf(info,sizeof(info),saved?"Token recibido; verificando cuenta...":"Token recibido. ERROR al guardar SD: sesion solo temporal");return 1;
 }
 static int renew(void){char b[8192]="";reply*r=calloc(1,sizeof(*r));if(!r)return 0;if(!refresh[0]){free(r);return 0;}
@@ -198,28 +208,33 @@ static int renew(void){char b[8192]="";reply*r=calloc(1,sizeof(*r));if(!r)return
 int auth_refresh_now(void){if(!auth_has_session())return 0;ready=0;checked=retry_after=0;return renew()&&auth_ensure();}
 int auth_due(void){return token[0]&&sh_clock_now()>=retry_after&&(!checked||sh_clock_now()-checked>=3500||sh_clock_now()>=expires-90);}
 int auth_ensure(void){
- if(!token[0])return 0;if(!auth_due()&&ready)return 1;if(sh_clock_now()<retry_after)return 0;retry_after=sh_clock_now()+60;ready=0;if(sh_clock_now()>=expires-90&&!renew())return 0;retry_after=sh_clock_now()+60;
+ if(!token[0])return 0;if(!auth_due()&&ready)return 1;if(sh_clock_now()<retry_after)return 0;retry_after=sh_clock_now()+60;ready=0;
+ /* rc12: si renew falla por red la sesion queda guardada y se reintenta pronto; solo 400/401 del proveedor la borran. */
+ if(sh_clock_now()>=expires-90&&!renew()){if(token[0])retry_after=sh_clock_now()+15;return 0;}retry_after=sh_clock_now()+60;
+ int renewed=0;
  reply*r=calloc(1,sizeof(*r));if(!r)return 0;long c;
+again:
 #ifdef WII_TWITCH_AUTH
  #ifdef AUTH_MOCK
  const char *validate="http://127.0.0.1:8989/validate";
  #else
  const char *validate="https://id.twitch.tv/oauth2/validate";
  #endif
- c=request(validate,NULL,2,r);char gotid[129];field(r->data,"client_id",gotid,sizeof(gotid));if(c==401){auth_logout();snprintf(info,sizeof(info),"Twitch revoco la sesion. Vuelve a autorizar.");free(r);return 0;}
+ c=request(validate,NULL,2,r);char gotid[129];field(r->data,"client_id",gotid,sizeof(gotid));if(c==401){/* rc12: el reloj de la Wii (hora local) puede hacer creer que el token sigue vigente: renovar antes de borrar. */if(!renewed&&refresh[0]){renewed=1;if(renew())goto again;free(r);if(token[0])retry_after=sh_clock_now()+15;return 0;}auth_logout();snprintf(info,sizeof(info),"Twitch revoco la sesion. Vuelve a autorizar.");free(r);return 0;}
  if(c!=200||strcmp(gotid,cid)||!scopes_ok(r->data,"scopes")){snprintf(info,sizeof(info),"No se pudo validar cliente/permisos Twitch (HTTP %ld)",c);free(r);return 0;}
  follow_scope=has_scope(r->data,"scopes","user:read:follows");
  long remaining=(long)jnum(jget(r->data,"expires_in"));if(remaining<=0){free(r);return 0;}expires=sh_clock_now()+remaining;
 #endif
- c=request(USER_URL,NULL,1,r);if(c==401){auth_logout();snprintf(info,sizeof(info),"Token rechazado; iniciá sesión otra vez");free(r);return 0;}
+ c=request(USER_URL,NULL,1,r);if(c==401){if(!renewed&&refresh[0]){renewed=1;if(renew())goto again;free(r);if(token[0])retry_after=sh_clock_now()+15;return 0;}auth_logout();snprintf(info,sizeof(info),"Token rechazado; iniciá sesión otra vez");free(r);return 0;}
  const char*arr=jget(r->data,"data"),*u=arr?jarr_first(arr):NULL;
 #ifdef WII_TWITCH_AUTH
  field(u,"login",name,sizeof(name));field(u,"id",user_id,sizeof(user_id));for(const char*p=user_id;*p;p++)if(!isdigit((unsigned char)*p)){user_id[0]=0;break;}
 #else
  field(u,"name",name,sizeof(name));user_num=(unsigned long)numeric_field(u?u:"{}","user_id");field(u,"profile_picture",avatar_url,sizeof(avatar_url));if(strncmp(avatar_url,"https://",8)||strpbrk(avatar_url," \"<>"))avatar_url[0]=0;
 #endif
- if(c!=200||!auth_message_valid(name)){name[0]=0;snprintf(info,sizeof(info),"No se pudo identificar la cuenta (HTTP %ld)",c);free(r);return 0;}
- ready=1;retry_after=0;checked=sh_clock_now();snprintf(info,sizeof(info),storage_failed?"Cuenta %s: ERROR SD, tokens solo en RAM":"Sesión: %s",name);free(r);return 1;
+ if(c==0){if(saved_login[0])snprintf(name,sizeof(name),"%s",saved_login);retry_after=sh_clock_now()+15;snprintf(info,sizeof(info),"Sesion guardada; esperando red para verificar");free(r);return 0;}
+ if(c!=200||!auth_message_valid(name)){name[0]=0;if(saved_login[0])snprintf(name,sizeof(name),"%s",saved_login);snprintf(info,sizeof(info),"No se pudo identificar la cuenta (HTTP %ld)",c);free(r);return 0;}
+ ready=1;retry_after=0;checked=sh_clock_now();if(strcmp(saved_login,name)&&!persist_tokens())storage_failed=1;snprintf(info,sizeof(info),storage_failed?"Cuenta %s: ERROR SD, tokens solo en RAM":"Sesión: %s",name);free(r);return 1;
 }
 int auth_begin(void){config();if(!auth_configured()){snprintf(info,sizeof(info),"Version sin configurar por el desarrollador");return 0;}auth_logout();char b[1024]="";reply*r=calloc(1,sizeof(*r));if(!r)return 0;
 #ifdef WII_TWITCH_AUTH
@@ -262,17 +277,17 @@ int auth_poll(void){if(!device[0])return 0;if(flow_expired()){device[0]=link[0]=
 }
 int auth_import_callback(const char*u){(void)u;snprintf(info,sizeof(info),"Esta version usa QR publico; no importa PKCE/codigos manuales");return 0;}
 int auth_import_file(void){return auth_import_callback(NULL);}
-void auth_init(void){follow_scope=0;user_id[0]=0;scope_have[0]=avatar_url[0]=0;user_num=0;flow_active=0;poll_at_ms=0;ready=0;token[0]=refresh[0]=name[0]=device[0]=link[0]=ucode[0]=0;expires=checked=pending_until=next_poll=retry_after=last_send=0;storage_failed=0;config();
+void auth_init(void){saved_login[0]=0;follow_scope=0;user_id[0]=0;scope_have[0]=avatar_url[0]=0;user_num=0;flow_active=0;poll_at_ms=0;ready=0;token[0]=refresh[0]=name[0]=device[0]=link[0]=ucode[0]=0;expires=checked=pending_until=next_poll=retry_after=last_send=0;storage_failed=0;config();
  /* RC5/6 PKCE state is not valid for public relay login. Do not read old RTCs. */
  erasefile("oauth-pending.txt");erasefile("oauth-callback.txt");erasefile("oauth-url.txt");char b[1024+2*TOKEN_MAX];
- if(readfile("oauth-tokens.txt",b,sizeof(b))){char stored[129]="",issuer[384]="",*save,*ln=strtok_r(b,"\r\n",&save);while(ln){char*eq=strchr(ln,'=');if(eq){*eq++=0;if(!strcmp(ln,"client_id"))snprintf(stored,sizeof(stored),"%s",eq);if(!strcmp(ln,"issuer"))snprintf(issuer,sizeof(issuer),"%s",eq);if(!strcmp(ln,"access_token")&&safe_value(eq,sizeof(token)))snprintf(token,sizeof(token),"%s",eq);if(!strcmp(ln,"refresh_token")&&safe_value(eq,sizeof(refresh)))snprintf(refresh,sizeof(refresh),"%s",eq);if(!strcmp(ln,"expires"))expires=(time_t)strtoll(eq,NULL,10);if(!strcmp(ln,"scope"))snprintf(scope_have,sizeof(scope_have),"%s",eq);}ln=strtok_r(NULL,"\r\n",&save);}
+ if(readfile("oauth-tokens.txt",b,sizeof(b))){char stored[129]="",issuer[384]="",*save,*ln=strtok_r(b,"\r\n",&save);while(ln){char*eq=strchr(ln,'=');if(eq){*eq++=0;if(!strcmp(ln,"client_id"))snprintf(stored,sizeof(stored),"%s",eq);if(!strcmp(ln,"issuer"))snprintf(issuer,sizeof(issuer),"%s",eq);if(!strcmp(ln,"access_token")&&safe_value(eq,sizeof(token)))snprintf(token,sizeof(token),"%s",eq);if(!strcmp(ln,"refresh_token")&&safe_value(eq,sizeof(refresh)))snprintf(refresh,sizeof(refresh),"%s",eq);if(!strcmp(ln,"expires"))expires=(time_t)strtoll(eq,NULL,10);if(!strcmp(ln,"scope"))snprintf(scope_have,sizeof(scope_have),"%s",eq);if(!strcmp(ln,"login")&&strlen(eq)<sizeof(name)&&auth_message_valid(eq))snprintf(name,sizeof(name),"%s",eq);if(!strcmp(ln,"user_num"))user_num=strtoul(eq,NULL,10);if(!strcmp(ln,"avatar")&&!strncmp(eq,"https://",8)&&!strpbrk(eq," \"<>")&&strlen(eq)<sizeof(avatar_url))snprintf(avatar_url,sizeof(avatar_url),"%s",eq);}ln=strtok_r(NULL,"\r\n",&save);}
 #ifdef WII_TWITCH_AUTH
  int match=auth_configured()&&!strcmp(cid,stored);
 #else
  int match=auth_configured()&&!strcmp(relay,issuer)&&!strcmp(cid,stored);
 #endif
- if(!match){token[0]=refresh[0]=0;expires=0;scope_have[0]=0;}memset(b,0,sizeof(b));}
- snprintf(info,sizeof(info),!auth_configured()?"Version sin configurar por el desarrollador":token[0]?"Sesión guardada; falta verificar en red":"Abrí Iniciar sesión: escaneá el QR y autorizá");
+ if(!match){token[0]=refresh[0]=0;expires=0;scope_have[0]=0;name[0]=avatar_url[0]=0;user_num=0;}if(!token[0])name[0]=0;snprintf(saved_login,sizeof(saved_login),"%s",name);memset(b,0,sizeof(b));}
+ snprintf(info,sizeof(info),!auth_configured()?"Version sin configurar por el desarrollador":token[0]?"Sesión guardada; verificando en red...":"Abrí Iniciar sesión: escaneá el QR y autorizá");
 }
 int auth_irc_snapshot(char *out,int ts,char *who,int ns){if(!ready||!token[0]||!name[0]||strlen(token)>=(size_t)ts)return 0;for(const char*p=name;*p;p++)if(!isalnum((unsigned char)*p)&&*p!='_')return 0;snprintf(out,ts,"%s",token);snprintf(who,ns,"%s",name);return 1;}
 /* Conservative 350-byte limit also keeps a complete IRC line under 512 bytes. */
@@ -292,7 +307,7 @@ int auth_kick_send_reply(unsigned long broadcaster,const char *text,const char*r
  else snprintf(body,sizeof(body),"{\"broadcaster_user_id\":%lu,\"content\":\"%s\",\"type\":\"user\"}",broadcaster,escaped);
  reply*r=calloc(1,sizeof(*r));if(!r)return 0;long code=request_m("POST",API_BASE "/v1/chat",body,1,1,r);
  const char*sent=jpath(r->data,"data.is_sent");int ok=code==200&&sent&&!strncmp(jws(sent),"true",4);
- if(code==401){auth_logout();snprintf(info,sizeof(info),"Sesion rechazada: autoriza de nuevo. No se reenvio.");}
+ if(code==401){/* rc12: renovar (sin reenviar); solo un refresh rechazado borra la sesion. */if(auth_refresh_now())snprintf(info,sizeof(info),"Sesión renovada: volvé a enviar el mensaje (no se reenvió).");else if(!token[0])snprintf(info,sizeof(info),"Sesion rechazada: autoriza de nuevo. No se reenvio.");else snprintf(info,sizeof(info),"Kick rechazó el envío (401) y no se pudo renovar ahora. No se reenvió.");}
  else if(ok)snprintf(info,sizeof(info),reply_to&&reply_to[0]?"Respuesta aceptada por Kick":"Mensaje aceptado por Kick");
  else if(code==403)snprintf(info,sizeof(info),"Kick no te deja escribir en este chat (HTTP 403: baneado, solo seguidores/subs o modo lento).");
  else if(code==429)snprintf(info,sizeof(info),"Kick limitó la frecuencia (HTTP 429). Esperá un momento.");
@@ -311,8 +326,10 @@ long auth_api(const char*method,const char*path,const char*json,char*out,size_t 
  if(!token[0])return -1;if(!ready&&!auth_ensure())return token[0]?0:-1;
  if(!path||path[0]!='/'||strlen(path)>1024)return 0;char url[1200];snprintf(url,sizeof(url),"%s%s",API_BASE,path);
  reply*r=calloc(1,sizeof(*r));if(!r)return 0;long code=request_m(method,url,json,1,1,r);
+ /* rc12: 401 -> renovar una vez y repetir; si sigue en 401 con token nuevo no se borra la sesion. */
+ if(code==401&&auth_refresh_now())code=request_m(method,url,json,1,1,r);
  if(out&&cap){size_t n=r->n<cap-1?r->n:cap-1;memcpy(out,r->data,n);out[n]=0;}
- if(code==401){auth_logout();snprintf(info,sizeof(info),"Kick rechazo la sesión (401). Iniciá sesión otra vez.");}
+ if(code==401)snprintf(info,sizeof(info),token[0]?"Kick rechazó el pedido (401).":"Kick rechazo la sesión (401). Iniciá sesión otra vez.");
  memset(r,0,sizeof(*r));free(r);return code;
 #endif
 }

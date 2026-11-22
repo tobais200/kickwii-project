@@ -425,7 +425,7 @@ static int topbar(void) {
         const kimg_t *ai = auth_ready() && auth_avatar()[0] ? thumb_get(auth_avatar()) : NULL;
         if (ai) gfx_blit_scaled_round(ai->px, ai->w, ai->h, cx + 4, 12, 24, 24, 12);
         else { gfx_circle(cx + 16, 24, 12, auth_ready() ? C_ACCENT : C_PANEL2, 255); gfx_icon(IC_USER, cx + 16, 24, 14, auth_ready() ? C_DARK : C_DIM); }
-        gfx_text_fit(&font_small, cx + 32, 16, auth_ready() ? auth_login() : (auth_has_session() ? "Cuenta" : "Entrar"), auth_ready() ? C_TEXT : C_DIM, cw - 38);
+        gfx_text_fit(&font_small, cx + 32, 16, auth_ready() ? auth_login() : (auth_has_session() ? (auth_login()[0] ? auth_login() : "Cuenta") : "Entrar"), auth_ready() ? C_TEXT : C_DIM, cw - 38);
         if (ui_click(cx, 8, cw, 32)) act = TB_ACCOUNT;
     }
     if (ui_button(SCR_W-72, 10, 62, 28, NULL, IC_MENU, BS_NORMAL, 0)) act = TB_SETTINGS;
