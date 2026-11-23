@@ -16,7 +16,7 @@
 
 #include "clock_sync.h"
 
-#define TV_VERSION "1.3-rc12"
+#define TV_VERSION "1.3-rc13"
 #define TV_UA          "Mozilla/5.0 (Nintendo Wii; U; ; 3642; es) AppleWebKit/535.19 (KHTML, like Gecko) KickWii/" TV_VERSION
 #define TV_CFG_DIR     "sd:/apps/KickWii/"
 #define TV_APP_NAME    "KickWii"
@@ -178,7 +178,11 @@ int  kick_parse_channel(const char *json, kstream_t *info, char *url, int usz);
 extern int k_chat_on;
 /* badge: 1 moderador, 2 broadcaster, 4 suscriptor, 8 VIP. echo = eco local aun sin id de Kick. */
 enum { CB_MOD = 1, CB_OWNER = 2, CB_SUB = 4, CB_VIP = 8 };
-typedef struct {char name[28],text[200];u32 color;int sys;char id[40];unsigned long uid;int badge,echo;} tchat_t;
+/* rc13: ne emotes en text[eat[i]..+elen[i]] (texto ":nombre:"), id de Kick en eid. */
+typedef struct {char name[28],text[200];u32 color;int sys;char id[40];unsigned long uid;int badge,echo;unsigned char ne,eat[8],elen[8];char eid[8][48];} tchat_t;
+int emote_url(const char *id, char *out, int cap);
+void chat_test_inject(void);            /* chat.c */
+int chat_rich(const void *font, int x, int y, int maxw, const tchat_t *m, u32 namecol, u32 textcol, int draw);
 void chat_start(const kstream_t *s);
 void chat_stop(void);
 int chat_gen(void);
@@ -198,6 +202,7 @@ typedef struct { int w, h; u32 *px; } kimg_t;
 void thumbs_init(void);
 void thumbs_pause(int p);                 /* 1 = no bajar nada (video a pantalla completa) */
 const kimg_t *thumb_get(const char *path); /* NULL si todavia no esta; la pide */
+const kimg_t *emote_get(const char *url);  /* rc13: cola de emotes del chat (tambien durante el video) */
 void thumbs_flush(void);                  /* cambia el servidor: vaciar */
 int  thumbs_pending(void);
 void thumbs_frame(void);

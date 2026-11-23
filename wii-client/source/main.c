@@ -830,10 +830,13 @@ static void draw_chat_panel(void) {
     for (i = n - 1; i >= 0 && y > 40; i--) {
         char buf[260];
         int nl_name = strlen(msgs[i].name);
+        int rich = !msgs[i].sys && msgs[i].ne;   /* rc13: emotes como imagenes */
         if (msgs[i].sys) snprintf(buf, sizeof(buf), "%s", msgs[i].text);
         else snprintf(buf, sizeof(buf), "%s: %s", msgs[i].name, msgs[i].text);
-        char **ln; int nl = ui_wrap(&font_small, buf, CHAT_W - 18, &ln);
-        int hgt = nl * 15 + 4;
+        char **ln = NULL; int nl = 0;
+        int hgt;
+        if (rich) hgt = chat_rich(&font_small, CHAT_X + 9, 0, CHAT_W - 18, &msgs[i], msgs[i].color, C_TEXT, 0) + 4;
+        else { nl = ui_wrap(&font_small, buf, CHAT_W - 18, &ln); hgt = nl * 15 + 4; }
         if (y - hgt < 40) { for (k = 0; k < nl; k++) free(ln[k]); free(ln); break; }
         y -= hgt;
         /* resaltado: mis mensajes (verde) y menciones a mi (ambar) */
@@ -843,6 +846,7 @@ static void draw_chat_panel(void) {
             gfx_rect(CHAT_X + 3, y - 1, CHAT_W - 6, hgt - 1, mine ? 0x173A12 : 0x3A2C0E);
             gfx_rect(CHAT_X + 3, y - 1, 3, hgt - 1, mine ? C_ACCENT : C_WARN);
         }
+        if (rich) { chat_rich(&font_small, CHAT_X + 9, y, CHAT_W - 18, &msgs[i], msgs[i].color, C_TEXT, 1); continue; }
         for (k = 0; k < nl; k++) {
             int yy = y + k * 15;
             if (msgs[i].sys) gfx_text(&font_small, CHAT_X + 9, yy, ln[k], msgs[i].color ? msgs[i].color : C_FAINT);
@@ -1103,6 +1107,13 @@ u32 at_hook(void) {
     } else if (phase==6 && at_ms()>8000) {
         LOG("LANG PASS: 12 changes, 3 complete cycles, 192 scroll inputs, refresh; language=%s n=%d filter=%d",k_langs[k_lang],live.n,nflt);
         quit=1;at_next();
+    }
+#elif defined(AUTOTEST_EMOTES)
+    switch(at_step){
+    case 0: if(at_wait(SCR_HOME,8000)){at_next();open_channel(NULL,AT_CHAN);}break;
+    case 1: if(at_wait(SCR_CHAN,6000)){at_next();start_watch();}break;
+    case 2: if(at_wait(SCR_WATCH,6000)){at_next();chat_test_inject();LOG("emotes: mensajes de prueba inyectados");}break;
+    case 3: if(at_wait(SCR_WATCH,12000)){static int k=0;at_ts=gettime();chat_test_inject();if(++k>=12){at_next();quit=1;}}break;
     }
 #else
     switch(at_step){

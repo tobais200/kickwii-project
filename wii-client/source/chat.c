@@ -24,12 +24,17 @@ static unsigned long emo_id[NEMO];static char emo_name[NEMO][32];static int emo_
 static char me[64];static volatile int my_badges;
 static void emote_seen(unsigned long id,const char*name){if(!id||!name[0])return;for(int i=0;i<emo_n;i++)if(emo_id[i]==id)return;int k=emo_n<NEMO?emo_n++:(int)(id%NEMO);emo_id[k]=id;snprintf(emo_name[k],32,"%s",name);}
 /* "[emote:123:KEKW]" -> ":KEKW:" (la fuente de la Wii no dibuja imagenes en el chat). */
-void emote_display(const char*in,char*out,int cap){int j=0;for(int i=0;in[i]&&j<cap-1;){if(!strncmp(in+i,"[emote:",7)){const char*a=in+i+7,*c1=strchr(a,':'),*e=c1?strchr(c1+1,']'):NULL;if(c1&&e&&e-c1<34&&c1>a&&c1-a<16){char nm[34];int n=(int)(e-c1-1);memcpy(nm,c1+1,n);nm[n]=0;if(mtx_ok)emote_seen(strtoul(a,NULL,10),nm);int k=snprintf(out+j,cap-j,":%s:",nm);if(k<0||k>=cap-j)break;j+=k;i=(int)(e-in)+1;continue;}}out[j++]=in[i++];}out[j]=0;}
+/* rc13: ademas guarda donde quedo cada ":nombre:" para dibujar la imagen del emote. */
+static void emote_display_m(const char*in,char*out,int cap,tchat_t*m){int j=0;if(m)m->ne=0;for(int i=0;in[i]&&j<cap-1;){if(!strncmp(in+i,"[emote:",7)){const char*a=in+i+7,*c1=strchr(a,':'),*e=c1?strchr(c1+1,']'):NULL;if(c1&&e&&e-c1<34&&c1>a&&c1-a<16){char nm[34];int n=(int)(e-c1-1);memcpy(nm,c1+1,n);nm[n]=0;if(mtx_ok)emote_seen(strtoul(a,NULL,10),nm);int k=snprintf(out+j,cap-j,":%s:",nm);if(k<0||k>=cap-j)break;
+  if(m&&m->ne<8&&j<256&&k<256){int ok=1;for(const char*q=a;q<c1;q++)if(*q<'0'||*q>'9')ok=0;if(ok){m->eat[m->ne]=j;m->elen[m->ne]=k;snprintf(m->eid[m->ne],sizeof(m->eid[0]),"%.*s",(int)(c1-a),a);m->ne++;}}
+  j+=k;i=(int)(e-in)+1;continue;}}out[j++]=in[i++];}out[j]=0;}
+void emote_display(const char*in,char*out,int cap){emote_display_m(in,out,cap,NULL);}
+int emote_url(const char*id,char*out,int cap){if(!id||!id[0]||strlen(id)>20)return 0;for(const char*q=id;*q;q++)if(*q<'0'||*q>'9')return 0;snprintf(out,cap,"https://files.kick.com/emotes/%s/static",id);return 1;}
 static void push_full(const char *name,const char *text,const char *color,const char*id,unsigned long uid,int badge,int echo,int sys) {
  char shown[200];LWP_MutexLock(mtx);emote_display(text,shown,sizeof(shown));
  if(!echo&&!sys&&id&&id[0])for(int k=0;k<count&&k<8;k++){tchat_t*o=&ring[(head+count-1-k)%NMSG];if(o->echo&&!strcasecmp(o->name,name)&&!strcmp(o->text,shown)){snprintf(o->id,sizeof(o->id),"%s",id);o->uid=uid;o->badge=badge;o->echo=0;gen++;LWP_MutexUnlock(mtx);return;}}
  if(count==NMSG){head=(head+1)%NMSG;count--;}
- tchat_t *m=&ring[(head+count++)%NMSG];memset(m,0,sizeof(*m));snprintf(m->name,sizeof(m->name),"%s",name);snprintf(m->text,sizeof(m->text),"%s",shown);m->sys=sys;
+ tchat_t *m=&ring[(head+count++)%NMSG];memset(m,0,sizeof(*m));snprintf(m->name,sizeof(m->name),"%s",name);if(sys)snprintf(m->text,sizeof(m->text),"%s",shown);else emote_display_m(text,m->text,sizeof(m->text),m);m->sys=sys;
  if(id)snprintf(m->id,sizeof(m->id),"%s",id);m->uid=uid;m->badge=badge;m->echo=echo;
  m->color=color[0]=='#'?strtoul(color+1,NULL,16)&0xffffff:C_ACCENT;
  if(((m->color>>16)*3+((m->color>>8)&255)*6+(m->color&255))<600)m->color=gfx_mix(m->color,0xffffff,110);
@@ -195,3 +200,9 @@ int chat_get(tchat_t *out,int max){if(!mtx_ok)return 0;LWP_MutexLock(mtx);int i,
 
 void chat_local_echo(const char*name,const char*text){if(mtx_ok)push_full(name,text,"#53FC18",NULL,0,my_badges,1,0);}
 int chat_send_text(const char*text){(void)text;return 0;}
+
+#ifdef AUTOTEST_EMOTES
+void chat_test_inject(void){if(!mtx_ok)return;
+ push_full("PruebaEmotes","hola [emote:39261:emoteA] estatico, [emote:37226:emoteB] y GIF [emote:4148074:emoteGif] con texto largo para ver como se corta la linea","#53FC18","t1",1,0,0,0);
+ push_full("Otro","[emote:39261:emoteA][emote:39261:emoteA] [emote:37226:emoteB]","#FF7A00","t2",2,0,0,0);}
+#endif
