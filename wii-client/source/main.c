@@ -563,8 +563,7 @@ static void draw_home(void) {
     }
     if (maxs > 0) {
         int th = GRID_H * GRID_H / (content + 1), ty = GRID_Y + (GRID_H - th) * scroll / maxs;
-        gfx_rrect(SCR_W - 6, GRID_Y, 3, GRID_H, 1, C_PANEL, 255);
-        gfx_rrect(SCR_W - 6, ty, 3, th, 1, C_ACCENT2, 255);
+        (void)th; (void)ty;   /* rc15: sin barra de desplazamiento (en TVs 16:9 se veia como una linea verde al costado de la grilla) */
         if (ui_hover(MX, SCR_H - 22, MW, 22) && scroll_t < maxs) scroll_t += 6;
         if (ui_hover(MX, GRID_Y - 4, MW, 14) && scroll_t > 0) scroll_t -= 6;
     }
@@ -667,7 +666,7 @@ static void draw_browse(void) {
         if(ui_click(x,y,BCW,BCH-6)){bsel=i;b_act=1;}
     }
     if(!browse_n)gfx_text_fit(&font_small,MX,175,st.running?"Buscando categorias publicas...":(st.error[0]&&!st.limited)?st.error:"Sin resultados. Cambia el grupo, la busqueda o el filtro +18.",C_DIM,MW);
-    if(browse_n>BCOLS*2){int rows=(browse_n+BCOLS-1)/BCOLS,h=292*2/rows;if(h<8)h=8;gfx_rect(SCR_W-6,140,3,292,C_PANEL2);gfx_rect(SCR_W-6,140+browse_top*(292-h)/(rows-2),3,h,C_ACCENT);}
+    /* rc15: sin barra de desplazamiento verde en Categorias */
     snprintf(label,sizeof(label),"%d-%d de %d  A: canales  B: inicio  1: buscar  -: grupo arriba/abajo: mover",browse_n?first+1:0,last<browse_n?last:browse_n,browse_n);
     gfx_text_fit(&font_small,MX,456,label,C_FAINT,MW);
     sidebar();int tb=topbar();if(tb)b_act=100+tb;
