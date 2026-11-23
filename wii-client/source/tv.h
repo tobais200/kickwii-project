@@ -16,7 +16,7 @@
 
 #include "clock_sync.h"
 
-#define TV_VERSION "1.3-rc13"
+#define TV_VERSION "1.3-rc14"
 #define TV_UA          "Mozilla/5.0 (Nintendo Wii; U; ; 3642; es) AppleWebKit/535.19 (KHTML, like Gecko) KickWii/" TV_VERSION
 #define TV_CFG_DIR     "sd:/apps/KickWii/"
 #define TV_APP_NAME    "KickWii"
@@ -192,6 +192,7 @@ void chat_notice(const char *text);
 int chat_seen_emotes(unsigned long *ids, char (*names)[32], int max);
 int chat_my_badges(void);
 void emote_display(const char *in, char *out, int cap);
+void emote_parse_preview(const char *in, tchat_t *m);
 /* account.c */
 void chat_forget(const char *id, const char *who);
 void chat_actions(const kstream_t *s);
@@ -199,6 +200,24 @@ int emote_pick(const char *slug, char *out, int cap);
 
 /* ---- thumbs.c: miniaturas/avatares RGB del companion, en un hilo aparte ---- */
 typedef struct { int w, h; u32 *px; } kimg_t;
+/* rc14: emote animado reducido al alto del chat. px = n cuadros w*h RGB565, ANIM_KEY = transparente. */
+#define ANIM_KEY 0xF81F
+typedef struct { int n, w, h, total; u16 *px; u16 *dly; u32 bytes; } kanim_t;
+const kimg_t *emote_get_anim(const char *url, const kanim_t **anim); /* rc14: tambien devuelve la animacion si hay */
+void thumbs_mem(char *out, int cap);
+void thumbs_anim_gc(void);
+void chat_anim_begin(void);                /* rc14: antes de redibujar todo el panel de chat */
+void chat_anim_reset(void);
+int  chat_anim_tick(void);                 /* avanza los emotes animados visibles; filas reescritas */
+int  chat_anim_count(void);
+void chat_anim_stats(unsigned *rows, unsigned *ticks);
+void chat_test_soak(int k);
+/* rc14: selector de emotes del teclado del chat (emote_ui.c) */
+typedef struct { char name[40]; char id[48]; unsigned char group, locked; char note[24]; } emo_item_t;
+int emote_grid(const char *title, const emo_item_t *it, int n, const char *const *gname, int ng, int *sel);
+int emote_preview_draw(const tchat_t *m, int x, int y, int w);
+extern int (*sui_kb_emote_hook)(char *out, int cap);
+extern int (*sui_kb_preview)(const char *buf, int x, int y, int w);       /* rc14: estado de memoria de imagenes (para logs) */
 void thumbs_init(void);
 void thumbs_pause(int p);                 /* 1 = no bajar nada (video a pantalla completa) */
 const kimg_t *thumb_get(const char *path); /* NULL si todavia no esta; la pide */

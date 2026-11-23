@@ -2,8 +2,8 @@
 <app version="1">
   <name>KickWii (no oficial)</name>
   <coder>fan-made</coder>
-  <version>1.3-rc13</version>
-  <release_date>20261121</release_date>
+  <version>1.3-rc14</version>
+  <release_date>20261123</release_date>
   <short_description>Directos de Kick con la interfaz de Kick</short_description>
   <long_description>Cliente NO OFICIAL hecho por fans. No esta afiliado ni autorizado por Kick ni por Nintendo; el icono es arte propio.
 
@@ -25,6 +25,8 @@ RC6: arregla el video que quedaba en 0 fps despues de un rato en la Wii real. Un
 
 RC7: en la vista con chat (video arriba, recomendaciones abajo) aparecen los botones Seguir y Suscribirse al lado de la barra de ayuda, y el hint incluye 2: suscribir. Ver LEEME-RC7.md.
 RC8: se sacan los botones Seguir y Suscribirse de abajo de las recomendaciones; quedan solo en el panel del chat. El hint corto incluye 2:suscribir. Ver LEEME-RC8.md.
+
+RC14: los emotes animados se mueven en el chat (cuadros chicos con limite de RAM: si no entran, queda la imagen fija) y el teclado del chat tiene la tecla Emotes (o 2): grilla con imagenes de los emotes del canal, vistos, globales y emojis. RC13: imagenes y banners cargan mas rapido y quedan guardados en la SD; emotes como imagenes en el chat.
 
 RC12: la sesion de Kick queda guardada al salir y volver a entrar (en la SD, o en el USB si no hay SD); si el token vencio se renueva solo y el QR aparece solo si Kick rechaza la renovacion. Margen seguro en los bordes para TVs que recortan la imagen (overscan), en 4:3 y 16:9.
 RC11: arreglado el cuelgue al abrir el canal en una Wii real sin tarjeta SD montada (por ejemplo, solo con disco USB): ya no crea carpetas en un dispositivo inexistente.

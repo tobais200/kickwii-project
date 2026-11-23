@@ -48,6 +48,11 @@ void auth_screen(void){thumbs_pause(1);ui_set_backdrop(NULL);
  int back=ui_button(436+OX,416,162,30,"Volver",IC_BACK,BS_NORMAL,0);ui_present();if(back)break;
  }
 }
+/* rc14: tecla Emotes del teclado (grilla con imagenes) y vista previa con imagenes */
+static const char *kb_chan;
+static int kb_emote(char*out,int cap){if(!emote_pick(kb_chan,out,cap))return 0;size_t n=strlen(out);while(n&&out[n-1]==' ')out[--n]=0;return n>0;}
+static int kb_preview(const char*buf,int x,int y,int w){if(!strstr(buf,"[emote:"))return -1;const char*s=buf;size_t L=strlen(buf);
+ if(L>190){s=buf+L-190;const char*q=strchr(s,' ');if(q)s=q+1;}static tchat_t m;emote_parse_preview(s,&m);return emote_preview_draw(&m,x,y,w);}
 static void append(char*text,size_t cap,const char*add){size_t n=strlen(text);if(n&&text[n-1]!=' '&&n+1<cap){text[n++]=' ';text[n]=0;}if(n+strlen(add)<cap)strcat(text,add);else ui_toast("No entra: el mensaje llegaría al máximo de 500 bytes.");}
 static int pick_mention(char*out,size_t cap){static tchat_t msgs[24];int n=chat_get(msgs,24),k=0;static char names[24][28];char*items[24];
  for(int i=n-1;i>=0;i--){if(msgs[i].sys||!msgs[i].name[0])continue;int dup=0;for(int j=0;j<k;j++)if(!strcmp(names[j],msgs[i].name))dup=1;if(dup||!strcasecmp(msgs[i].name,auth_login()))continue;snprintf(names[k],28,"%s",msgs[i].name);items[k]=names[k];k++;}
@@ -65,7 +70,9 @@ void auth_compose_ex(const char *channel,unsigned long broadcaster,const char*re
 #ifdef AUTH_MOCK
   auth_test_stage=4;
 #endif
+  kb_chan=channel;sui_kb_emote_hook=kb_emote;sui_kb_preview=kb_preview;
   int ok=sui_text_input_ex(title,hint,text,500,"Listo","Escribí tu mensaje");
+  sui_kb_emote_hook=NULL;sui_kb_preview=NULL;
 #ifdef AUTH_MOCK
   auth_test_stage=5;
 #endif
@@ -79,6 +86,7 @@ void auth_compose_ex(const char *channel,unsigned long broadcaster,const char*re
    if(sel==4){memset(text,0,sizeof(text));return;}
    if(sel==1){char add[64];if(emote_pick(channel,add,sizeof(add)))append(text,sizeof(text),add);continue;}
    if(sel==2){char add[40];if(pick_mention(add,sizeof(add)))append(text,sizeof(text),add);continue;}
+   {size_t n=strlen(text);while(n&&text[n-1]==' ')text[--n]=0;}   /* rc14: sin el espacio que deja el selector */
    if(!auth_message_valid(text)){ui_toast("Mensaje vacío, muy largo o con caracteres de control. No enviado.");break;}
 #ifdef WII_TWITCH_AUTH
    if(!chat_send_text(text))ui_toast("No enviado: chat conectando, ocupado o limite de frecuencia.");else ui_toast("En cola IRC. Un aviso del servidor puede rechazarlo.");

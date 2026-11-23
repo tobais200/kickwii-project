@@ -25,10 +25,13 @@ static char me[64];static volatile int my_badges;
 static void emote_seen(unsigned long id,const char*name){if(!id||!name[0])return;for(int i=0;i<emo_n;i++)if(emo_id[i]==id)return;int k=emo_n<NEMO?emo_n++:(int)(id%NEMO);emo_id[k]=id;snprintf(emo_name[k],32,"%s",name);}
 /* "[emote:123:KEKW]" -> ":KEKW:" (la fuente de la Wii no dibuja imagenes en el chat). */
 /* rc13: ademas guarda donde quedo cada ":nombre:" para dibujar la imagen del emote. */
-static void emote_display_m(const char*in,char*out,int cap,tchat_t*m){int j=0;if(m)m->ne=0;for(int i=0;in[i]&&j<cap-1;){if(!strncmp(in+i,"[emote:",7)){const char*a=in+i+7,*c1=strchr(a,':'),*e=c1?strchr(c1+1,']'):NULL;if(c1&&e&&e-c1<34&&c1>a&&c1-a<16){char nm[34];int n=(int)(e-c1-1);memcpy(nm,c1+1,n);nm[n]=0;if(mtx_ok)emote_seen(strtoul(a,NULL,10),nm);int k=snprintf(out+j,cap-j,":%s:",nm);if(k<0||k>=cap-j)break;
+static void emote_display_m2(const char*in,char*out,int cap,tchat_t*m,int seen){int j=0;if(m)m->ne=0;for(int i=0;in[i]&&j<cap-1;){if(!strncmp(in+i,"[emote:",7)){const char*a=in+i+7,*c1=strchr(a,':'),*e=c1?strchr(c1+1,']'):NULL;if(c1&&e&&e-c1<34&&c1>a&&c1-a<16){char nm[34];int n=(int)(e-c1-1);memcpy(nm,c1+1,n);nm[n]=0;if(seen&&mtx_ok)emote_seen(strtoul(a,NULL,10),nm);int k=snprintf(out+j,cap-j,":%s:",nm);if(k<0||k>=cap-j)break;
   if(m&&m->ne<8&&j<256&&k<256){int ok=1;for(const char*q=a;q<c1;q++)if(*q<'0'||*q>'9')ok=0;if(ok){m->eat[m->ne]=j;m->elen[m->ne]=k;snprintf(m->eid[m->ne],sizeof(m->eid[0]),"%.*s",(int)(c1-a),a);m->ne++;}}
   j+=k;i=(int)(e-in)+1;continue;}}out[j++]=in[i++];}out[j]=0;}
+static void emote_display_m(const char*in,char*out,int cap,tchat_t*m){emote_display_m2(in,out,cap,m,1);}
 void emote_display(const char*in,char*out,int cap){emote_display_m(in,out,cap,NULL);}
+/* rc14: vista previa del teclado (no anota "vistos") */
+void emote_parse_preview(const char*in,tchat_t*m){memset(m,0,sizeof(*m));emote_display_m2(in,m->text,sizeof(m->text),m,0);}
 int emote_url(const char*id,char*out,int cap){if(!id||!id[0]||strlen(id)>20)return 0;for(const char*q=id;*q;q++)if(*q<'0'||*q>'9')return 0;snprintf(out,cap,"https://files.kick.com/emotes/%s/static",id);return 1;}
 static void push_full(const char *name,const char *text,const char *color,const char*id,unsigned long uid,int badge,int echo,int sys) {
  char shown[200];LWP_MutexLock(mtx);emote_display(text,shown,sizeof(shown));
@@ -201,6 +204,89 @@ int chat_get(tchat_t *out,int max){if(!mtx_ok)return 0;LWP_MutexLock(mtx);int i,
 void chat_local_echo(const char*name,const char*text){if(mtx_ok)push_full(name,text,"#53FC18",NULL,0,my_badges,1,0);}
 int chat_send_text(const char*text){(void)text;return 0;}
 
+#ifdef AUTOTEST_SOAK
+static const char *soak_em[]={
+"[emote:1579033:emojiAstonished]",
+"[emote:1579036:emojiBlowKiss]",
+"[emote:1579038:emojiXEyes]",
+"[emote:1579040:emojiCrying]",
+"[emote:1579041:emojiDisappoint]",
+"[emote:1579042:emojiDisguise]",
+"[emote:1579044:emojiEnraged]",
+"[emote:1579045:emojiExcited]",
+"[emote:1579046:emojiGrimacing]",
+"[emote:1579047:emojiHeartEyes]",
+"[emote:1579050:emojiLaughing]",
+"[emote:1579051:emojiMoneyEyes]",
+"[emote:1579052:emojiPleading]",
+"[emote:1579054:emojiEyeRoll]",
+"[emote:1579055:emojiSmerking]",
+"[emote:1579057:emojiSmiling]",
+"[emote:1579058:emojiStarEyes]",
+"[emote:1579059:emojiSwearing]",
+"[emote:1579061:emojiUnamused]",
+"[emote:1579062:emojiVomiting]",
+"[emote:1730752:emojiAngel]",
+"[emote:1730753:emojiAngry]",
+"[emote:1730754:emojiAwake]",
+"[emote:1730755:emojiBubbly]",
+"[emote:1730756:emojiCheerful]",
+"[emote:1730758:emojiClown]",
+"[emote:1730759:emojiCool]",
+"[emote:1730760:emojiCrave]",
+"[emote:1730761:emojiCry]",
+"[emote:1730762:emojiCurious]",
+"[emote:1730765:emojiCute]",
+"[emote:1730767:emojiDead]",
+"[emote:1730768:emojiDevil]",
+"[emote:1730769:emojiDJ]",
+"[emote:1730770:emojiDown]",
+"[emote:1730772:emojiFire]",
+"[emote:1730774:emojiGamer]",
+"[emote:1730775:emojiGlass]",
+"[emote:1730776:emojiGoofy]",
+"[emote:1730782:emojiGramps]",
+"[emote:1730785:emojiGrin]",
+"[emote:1730786:emojiGrumpy]",
+"[emote:1730787:emojiHappy]",
+"[emote:1730788:emojiHmm]",
+"[emote:1730789:emojiKing]",
+"[emote:1730790:emojiKiss]",
+"[emote:1730791:emojiLady]",
+"[emote:1730792:emojiLoading]",
+"[emote:1730794:emojiLol]",
+"[emote:1730796:emojiMan]",
+"[emote:1730798:emojiNo]",
+"[emote:1730799:emojiOof]",
+"[emote:1730800:emojiOooh]",
+"[emote:1730802:emojiOuch]",
+"[emote:1730803:emojiRich]",
+"[emote:1730807:emojiShocked]",
+"[emote:1730825:emojiSleep]",
+"[emote:1730827:emojiSmart]",
+"[emote:1730829:emojiSorry]",
+"[emote:1730830:emojiStare]",
+"[emote:1730831:emojiWink]",
+"[emote:1730834:emojiYay]",
+"[emote:1730835:emojiYes]",
+"[emote:1730839:emojiYuh]",
+"[emote:1730840:emojiYum]",
+"[emote:2208368:benjazbenji]",
+"[emote:2335847:benjazRanita]",
+"[emote:2335856:benjazAngry]",
+"[emote:2335900:benjazKiss]",
+"[emote:2753685:benjazabuelorecio]",
+"[emote:3328338:benjazabueloteton]",
+"[emote:3328340:benjazpuchitoxd]",
+"[emote:3328342:benjazxdddddd]",
+"[emote:3328343:benjazrage]",
+"[emote:3328352:benjazpapitayuncabro]",
+"[emote:3421179:benjazrata]"};
+/* rc14 soak: 3 emotes animados distintos por mensaje, rotando por toda la lista */
+void chat_test_soak(int k){char t[400];int n=sizeof(soak_em)/sizeof(soak_em[0]);if(!mtx_ok)return;
+ snprintf(t,sizeof t,"soak %d %s texto %s y %s",k,soak_em[(k*3)%n],soak_em[(k*3+1)%n],soak_em[(k*3+2)%n]);
+ push_full("Soak",t,"#53FC18","s",k,0,0,0);}
+#endif
 #ifdef AUTOTEST_EMOTES
 void chat_test_inject(void){if(!mtx_ok)return;
  push_full("PruebaEmotes","hola [emote:39261:emoteA] estatico, [emote:37226:emoteB] y GIF [emote:4148074:emoteGif] con texto largo para ver como se corta la linea","#53FC18","t1",1,0,0,0);

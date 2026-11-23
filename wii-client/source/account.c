@@ -212,7 +212,7 @@ void mychannel_screen(void) {
 }
 
 /* ---------------------------------------------------------------- emotes */
-#define NEMOTE 100
+#define NEMOTE 300
 static char em_slug[48];
 static int em_n;
 static unsigned long em_id[NEMOTE];
@@ -258,18 +258,34 @@ static void em_load(const char *slug) {
     }
     sh_resp_free(&r);
 }
+/* rc14: grilla con imagenes (canal, vistos en el chat, globales y emojis de Kick).
+ * Los "solo suscriptores" quedan marcados con candado salvo que seas suscriptor/dueño
+ * (visto en tus insignias del chat); se pueden insertar igual, Kick decide. */
 int emote_pick(const char *slug, char *out, int cap) {
     if (!em_n || strcmp(em_slug, slug ? slug : "")) em_load(slug);
     else { unsigned long ids[48]; char names[48][32]; int n = chat_seen_emotes(ids, names, 48); for (int i = 0; i < n; i++) em_add(ids[i], names[i], 1, 0); }
     if (!em_n) { sui_message("Emotes", "No se pudieron cargar emotes de este canal y todavía no apareció ninguno en el chat."); return 0; }
-    static char lines[NEMOTE][80];
-    char *items[NEMOTE];
-    static const char *kinds[4] = { "Emote del canal", "Visto en el chat", "Emote global de Kick", "Emoji de Kick" };
-    for (int i = 0; i < em_n; i++) { snprintf(lines[i], sizeof(lines[i]), ":%s:\n%s%s", em_name[i], kinds[em_kind[i]], em_sub[i] ? " (solo suscriptores)" : ""); items[i] = lines[i]; }
+    static emo_item_t it[NEMOTE];
+    static const char *const groups[4] = { "Canal", "Vistos", "Globales", "Emojis" };
+    int can_sub = (chat_my_badges() & (CB_SUB | CB_OWNER)) != 0, n = 0;
+    for (int pass = 0; pass < 2; pass++)   /* los bloqueados al final de su grupo */
+        for (int i = 0; i < em_n; i++) {
+            int locked = em_sub[i] && !can_sub;
+            if (locked != pass) continue;
+            emo_item_t *e = &it[n++];
+            snprintf(e->name, sizeof e->name, "%s", em_name[i]);
+            snprintf(e->id, sizeof e->id, "%lu", em_id[i]);
+            e->group = em_kind[i]; e->locked = locked;
+            snprintf(e->note, sizeof e->note, "%s", em_sub[i] && can_sub ? "suscriptores" : "");
+        }
     static int sel = 0;
-    if (sel >= em_n) sel = 0;
-    if (sui_list("Elegí un emote", "A: insertar   B: volver", items, em_n, &sel) != WPAD_BUTTON_A) return 0;
-    snprintf(out, cap, "[emote:%lu:%s] ", em_id[sel], em_name[sel]);
+    char title[96]; snprintf(title, sizeof title, "Emotes - kick.com/%s", em_slug);
+    int k = emote_grid(title, it, n, groups, 4, &sel);
+    if (k < 0) return 0;
+    snprintf(out, cap, "[emote:%s:%s] ", it[k].id, it[k].name);
+#ifdef AUTH_MOCK
+    { extern void auth_test_note(const char *); char b[96]; snprintf(b, sizeof b, "emote_pick -> %s", out); auth_test_note(b); }
+#endif
     return 1;
 }
 

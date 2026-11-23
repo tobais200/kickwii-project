@@ -127,7 +127,12 @@ int auth_configured(void){
 }
 const char *auth_client_id(void){return cid;}
 static const char*kick_endpoint(const char*part){static char out[448];snprintf(out,sizeof(out),"%s/%s",relay,part);return out;}
+#ifdef SEND_DRYRUN
+/* rc14 PRUEBA: sin cuenta real; el envio solo guarda el payload en la SD. Nunca en un release. */
+int auth_ready(void){return 1;}
+#else
 int auth_ready(void){return ready;}
+#endif
 int auth_has_session(void){return token[0]!=0;}
 const char *auth_login(void){return name;}
 const char *auth_status(void){return info;}
@@ -173,7 +178,11 @@ static int scopes_ok(const char*json,const char*key){
 /* Kick devuelve "scope" como texto separado por espacios; Twitch como lista. */
 static void scope_capture(const char*json){const char*p=jget(json,"scope");char out[512]="";if(p){p=jws(p);if(*p=='['){for(const char*e=jarr_first(p);e;e=jarr_next(e)){char one[96];jstr(e,one,sizeof(one));if(strlen(out)+strlen(one)+2<sizeof(out)){if(out[0])strcat(out," ");strcat(out,one);}}}else jstr(p,out,sizeof(out));}
  for(char*q=out;*q;q++)if((unsigned char)*q<32||(unsigned char)*q>126)*q=' ';snprintf(scope_have,sizeof(scope_have),"%s",out);}
-int auth_scope(const char*want){if(!want||!want[0])return 0;if(!scope_have[0]){
+int auth_scope(const char*want){if(!want||!want[0])return 0;
+#ifdef SEND_DRYRUN
+ return 1;
+#endif
+if(!scope_have[0]){
 #ifdef WII_TWITCH_AUTH
  return 0;
 #else
@@ -299,12 +308,18 @@ int auth_kick_send_reply(unsigned long broadcaster,const char *text,const char*r
 #ifdef WII_TWITCH_AUTH
  (void)broadcaster;(void)text;(void)reply_to;return 0;
 #else
+ #ifndef SEND_DRYRUN
  if(!ready||!broadcaster||!auth_message_valid(text)){snprintf(info,sizeof(info),!ready?"Primero iniciá sesión":"Mensaje vacío o demasiado largo");return 0;}
+ #endif
  if(!auth_scope("chat:write")){snprintf(info,sizeof(info),"Tu sesión no tiene permiso para escribir. Cerrá sesión y volvé a entrar.");return 0;}
  if(last_send&&sh_clock_now()-last_send<2){snprintf(info,sizeof(info),"Esperá dos segundos entre mensajes");return 0;}last_send=sh_clock_now();
  char escaped[MSG_MAX*6+8],body[MSG_MAX*6+256];if(!auth_json_escape(text,escaped,sizeof(escaped)))return 0;
  if(reply_to&&reply_to[0]&&uuidish(reply_to))snprintf(body,sizeof(body),"{\"broadcaster_user_id\":%lu,\"content\":\"%s\",\"type\":\"user\",\"reply_to_message_id\":\"%s\"}",broadcaster,escaped,reply_to);
  else snprintf(body,sizeof(body),"{\"broadcaster_user_id\":%lu,\"content\":\"%s\",\"type\":\"user\"}",broadcaster,escaped);
+ #ifdef SEND_DRYRUN
+ {FILE*f=fopen("sd:/kickwii-test/dryrun-payload.txt","a");if(f){fprintf(f,"POST %s/v1/chat\n%s\n",API_BASE,body);fclose(f);}
+  snprintf(info,sizeof(info),"PRUEBA: no enviado; payload guardado en la SD");return 1;}
+ #endif
  reply*r=calloc(1,sizeof(*r));if(!r)return 0;long code=request_m("POST",API_BASE "/v1/chat",body,1,1,r);
  const char*sent=jpath(r->data,"data.is_sent");int ok=code==200&&sent&&!strncmp(jws(sent),"true",4);
  if(code==401){/* rc12: renovar (sin reenviar); solo un refresh rechazado borra la sesion. */if(auth_refresh_now())snprintf(info,sizeof(info),"Sesión renovada: volvé a enviar el mensaje (no se reenvió).");else if(!token[0])snprintf(info,sizeof(info),"Sesion rechazada: autoriza de nuevo. No se reenvio.");else snprintf(info,sizeof(info),"Kick rechazó el envío (401) y no se pudo renovar ahora. No se reenvió.");}
