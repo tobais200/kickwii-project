@@ -26,7 +26,7 @@
 #include "dlog.h"
 #include "mem2.h"
 #include "social.h"
-static int chat_write_pressed,watch_social_pressed,chat_actions_pressed;
+static int chat_write_pressed,watch_social_pressed;
 #include "catalog.h"
 
 /* ---------------------------------------------------------------- layout (640/854x480) */
@@ -809,7 +809,7 @@ static void draw_osd(void) {
     if (tp_state() == TP_ERROR) snprintf(s, sizeof(s), "Se cort\xc3\xb3: %s", tp_error());
     else snprintf(s, sizeof(s), "%s \xc2\xb7 %s \xc2\xb7 %.0f fps \xc2\xb7 vol %d%%", tp_status(), k_server[0] ? pm_names[k_play_mode] : tp_mode_text(), tp_fps(), tp_volume() * 100 / 255);
     gfx_text_fit(&font_bold, 16, OSD_BOT + 8, s, C_TEXT, SCR_W-40);
-    gfx_text_fit(&font_small, 16, OSD_BOT + 30, "B: volver  +: pantalla  1: escribir  abajo: responder/moderar  -: seguir  2: suscribir", C_FAINT, SCR_W-310);
+    gfx_text_fit(&font_small, 16, OSD_BOT + 30, "B: volver  +: pantalla  1: escribir  -: seguir  2: suscribir", C_FAINT, SCR_W-310);
     if(ui_button(SCR_W-280,OSD_BOT+26,132,24,social_label(pinfo.slug),IC_HEART,BS_ACCENT,0))watch_social_pressed=1;
     if(ui_button(SCR_W-140,OSD_BOT+26,132,24,"Suscribirse",0,BS_NORMAL,0))watch_social_pressed=2;
     ui_draw_toast(OSD_BOT - 6);
@@ -864,7 +864,7 @@ static void draw_chat_panel(void) {
         char **ln;int nn=ui_wrap(&font_small,chat_status()[0]?chat_status():"Esperando mensajes...",CHAT_W-20,&ln);
         for(i=0;i<nn;i++){gfx_text(&font_small,CHAT_X+10,190+i*16,ln[i],C_FAINT);free(ln[i]);}free(ln);
     }
-    /* rc16: sin boton "Responder / moderar" (pedido de Tobias); abajo en el pad sigue abriendo el menu */
+    /* rc16: sin boton "Responder / moderar"; rc17: sin "abajo:responder" en la ayuda ni el atajo abajo (pedido de Tobias) */
     if(ui_button(CHAT_X+8,SCR_H-98,CHAT_W-16,26,social_label(pinfo.slug),IC_HEART,BS_ACCENT,0))watch_social_pressed=1;
     if(ui_button(CHAT_X+8,SCR_H-66,CHAT_W-16,26,"Suscribirse",0,BS_NORMAL,0))watch_social_pressed=2;
     if(ui_button(CHAT_X+8,SCR_H-34,CHAT_W-16,26,"Escribir",IC_CHAT,BS_ACCENT,0))chat_write_pressed=1;
@@ -902,7 +902,7 @@ static int watch_frame(int input) {
                 if (!wide) gfx_text(&font_small, 12, sy - 20, "Otros directos", C_DIM);
                 draw_recs(pinfo.slug, 12, sy, CHAT_X - 24, wide ? 32 : 56, 0);
                 gfx_text_fit(&font_small, 12, SCR_H - 16,
-                    "B:canal +/-:vol +:full 1:escribir abajo:responder -:seguir 2:suscribir",
+                    "B:canal  +/-:vol  +:full  1:escribir  -:seguir  2:suscribir",
                     C_FAINT, CHAT_X - 24);
             }
             gfx_ui_cache_rows(0,SCR_H);fs_last_osd=now;
@@ -1280,7 +1280,7 @@ int main(int argc, char **argv) {
             int wrote = watch_frame(d != 0);
             guard_where("watch: acciones");
             if(watch_social_pressed||(d&(WPAD_BUTTON_MINUS|WPAD_BUTTON_2))){int sub=watch_social_pressed?watch_social_pressed==2:!!(d&WPAD_BUTTON_2);watch_social_pressed=0;chat_stop();social_screen(pinfo.slug,sub);if(watch_chat_started)chat_start(&pinfo);thumbs_pause(1);fs_details_was=fs_osd_was=-1;fs_last_pic=NULL;osd_t=gettime();curpic=NULL;continue;}
-            if(chat_actions_pressed||(d&WPAD_BUTTON_DOWN)){chat_actions_pressed=0;if(!watch_chat_started){watch_chat_started=1;chat_start(&pinfo);ui_toast("Abriendo el chat: espera unos mensajes y volve a pulsar abajo.");}else if(!auth_ready()){chat_stop();auth_screen();if(watch_chat_started)chat_start(&pinfo);}else chat_actions(&pinfo);thumbs_pause(1);fs_details_was=fs_osd_was=-1;fs_last_pic=NULL;osd_t=gettime();curpic=NULL;continue;}
+            /* rc17: abajo ya no abre responder/moderar (pedido de Tobias) */
             if(chat_write_pressed||(d&WPAD_BUTTON_1)){chat_write_pressed=0;if(!auth_ready()){chat_stop();auth_screen();if(watch_chat_started)chat_start(&pinfo);}if(auth_ready()&&!watch_chat_started){watch_chat_started=1;chat_start(&pinfo);}if(auth_ready())auth_compose(pinfo.slug,pinfo.broadcaster_user_id);thumbs_pause(1);fs_details_was=fs_osd_was=-1;fs_last_pic=NULL;osd_t=gettime();curpic=NULL;continue;}
 
             if (!wrote) { guard_where("watch: vsync"); VIDEO_WaitVSync(); }

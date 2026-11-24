@@ -29,7 +29,7 @@ void auth_screen(void){thumbs_pause(1);ui_set_backdrop(NULL);
   wrap(44+OX,290,"Este paquete de prueba tiene las constantes de publicacion vacias. No se puede inventar un QR de autorizacion valido.",550,C_DIM);
  }else if(auth_ready()){
   gfx_icon(IC_USER,150+OX,180,64,C_ACCENT);gfx_text_c(&font_small,150+OX,240,"Cuenta conectada",C_DIM);gfx_text_fit(&font_title,282+OX,104,auth_login(),C_ACCENT,310);
-  wrap(282+OX,150,"Listo. En el directo: 1 = escribir, abajo = responder/moderar. Seguir y Suscribirse abren la web oficial en el telefono (la API oficial no permite seguir desde apps).",300,C_TEXT);
+  wrap(282+OX,150,"Listo. En el directo: 1 = escribir. Seguir y Suscribirse abren la web oficial en el telefono (la API oficial no permite seguir desde apps).",300,C_TEXT);
  }else if(auth_url()[0]){
   qr_draw(auth_url());gfx_text_fit(&font_title,282+OX,104,auth_code(),C_ACCENT,310);
 #ifdef WII_TWITCH_AUTH
