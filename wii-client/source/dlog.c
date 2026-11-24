@@ -64,6 +64,18 @@ void dlog_init(int sd_ok) {
     on = 1; written = 0;
 }
 
+#ifdef DLOG_UDP
+/* solo pruebas en Dolphin: copia cada linea por UDP a 127.0.0.1:9977 (la SD de Dolphin solo se sincroniza al cerrar) */
+#include <sys/socket.h>
+#include <netinet/in.h>
+static void udp_line(const char *l, int n) {
+    static int fd = -1; struct sockaddr_in a;
+    if (fd < 0) fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) return;
+    memset(&a, 0, sizeof a); a.sin_family = AF_INET; a.sin_port = 9977; a.sin_addr.s_addr = 0x7f000001;
+    sendto(fd, l, n, 0, (struct sockaddr *)&a, sizeof a);
+}
+#endif
 void dlog(const char *fmt, ...) {
     char line[400];
     va_list ap;
@@ -75,6 +87,9 @@ void dlog(const char *fmt, ...) {
     va_end(ap);
     n = strlen(line);
     line[n++] = '\n'; line[n] = 0;
+#ifdef DLOG_UDP
+    udp_line(line, n);
+#endif
     LWP_MutexLock(m);
     if (blen + n < DLOG_BUF) { memcpy(buf + blen, line, n); blen += n; }
     else dropped++;

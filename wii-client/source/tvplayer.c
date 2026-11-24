@@ -44,6 +44,7 @@
 #include <libavutil/opt.h>
 #include <libavutil/channel_layout.h>
 #include "tv.h"
+#include "guard.h"
 #include "dlog.h"
 
 /* ------------------------------------------------------------------ audio */
@@ -1047,6 +1048,16 @@ const tv_pic_t *tp_picture(void) {
 /* espera los hilos ya terminados y deja colas/decodificadores limpios (no toca la URL ni los limites) */
 static void pipeline_reset(void) {
     int i;
+    {   /* rc16: no unirse a ciegas: esperar (acotado) a que los hilos terminen, cortando sus sockets */
+        u64 t0 = gettime(), lastk = 0;
+        guard_where("tp_stop: esperando hilos de video");
+        while (!(net_done && dmx_done && vid_done) && ticks_to_millisecs(gettime() - t0) < 8000) {
+            u64 now = gettime();
+            if (ticks_to_millisecs(now - t0) > 1000 && (!lastk || ticks_to_millisecs(now - lastk) > 2000)) { lastk = now; kill_socks("cerrando el video: hilo trabado"); }
+            guard_beat(); usleep(10000);
+        }
+        if (!(net_done && dmx_done && vid_done)) dlog("player: hilos sin terminar tras 8 s (red %d demux %d video %d)", net_done, dmx_done, vid_done);
+    }
     if (th_vid != LWP_THREAD_NULL) { LWP_JoinThread(th_vid, NULL); th_vid = LWP_THREAD_NULL; }
     if (th_dmx != LWP_THREAD_NULL) { LWP_JoinThread(th_dmx, NULL); th_dmx = LWP_THREAD_NULL; }
     if (th_net != LWP_THREAD_NULL) { LWP_JoinThread(th_net, NULL); th_net = LWP_THREAD_NULL; }
@@ -1152,6 +1163,28 @@ static void wd_tick(void) {
         dlog("VIGILANTE: 30 s estable despues del reinicio");
         restart_streak = 0;
     }
+}
+
+/* rc16: llamado por el vigilante del hilo principal (guard.c) desde su propio hilo.
+   1 = bajar la prioridad de red/demux/video por debajo de la UI (64); 0 = restaurar; 3 = cortar sockets. */
+void tp_guard(int level) {
+    static int low = 0;
+    if (level >= 1 && !low) {
+        low = 1;
+        if (th_net != LWP_THREAD_NULL && !net_done) LWP_SetThreadPriority(th_net, 44);
+        if (th_dmx != LWP_THREAD_NULL && !dmx_done) LWP_SetThreadPriority(th_dmx, 42);
+        if (th_vid != LWP_THREAD_NULL && !vid_done) LWP_SetThreadPriority(th_vid, 40);
+    } else if (level == 0 && low) {
+        low = 0;
+        if (th_net != LWP_THREAD_NULL && !net_done) LWP_SetThreadPriority(th_net, 72);
+        if (th_dmx != LWP_THREAD_NULL && !dmx_done) LWP_SetThreadPriority(th_dmx, 70);
+        if (th_vid != LWP_THREAD_NULL && !vid_done) LWP_SetThreadPriority(th_vid, 52);
+    }
+    if (level >= 3) kill_socks("hilo principal trabado");
+}
+void tp_guard_info(char *o, int n) {
+    snprintf(o, n, "video: estado %d fase %d hilos red%d/demux%d/video%d | decod %d mostrados %d | segs %d colas seg %d vq %d audio %d blq%s | red %lld KB",
+             pstate, wd_phase, !net_done, !dmx_done, !vid_done, nframes, nshown, n_seg_ok, sq_count, vq_count(), full_blocks(), starved ? " SIN AUDIO" : "", net_bytes >> 10);
 }
 
 static int start_threads(void) {

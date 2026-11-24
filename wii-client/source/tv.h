@@ -16,7 +16,7 @@
 
 #include "clock_sync.h"
 
-#define TV_VERSION "1.3-rc15"
+#define TV_VERSION "1.3-rc16"
 #define TV_UA          "Mozilla/5.0 (Nintendo Wii; U; ; 3642; es) AppleWebKit/535.19 (KHTML, like Gecko) KickWii/" TV_VERSION
 #define TV_CFG_DIR     "sd:/apps/KickWii/"
 #define TV_APP_NAME    "KickWii"
@@ -212,6 +212,7 @@ int  chat_anim_tick(void);                 /* avanza los emotes animados visible
 int  chat_anim_count(void);
 void chat_anim_stats(unsigned *rows, unsigned *ticks);
 void chat_test_soak(int k);
+void chat_test_stuck(void);           /* rc16: prueba GUARD_TEST_CHAT */
 /* rc14: selector de emotes del teclado del chat (emote_ui.c) */
 typedef struct { char name[40]; char id[48]; unsigned char group, locked; char note[24]; } emo_item_t;
 int emote_grid(const char *title, const emo_item_t *it, int n, const char *const *gname, int ng, int *sel);

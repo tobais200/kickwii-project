@@ -13,6 +13,8 @@
 #include <ogc/lwp_watchdog.h>
 #include "tv.h"
 #include "chat_net.h"
+#include "guard.h"
+#include "dlog.h"
 #include <strings.h>
 #define NMSG 24
 static tchat_t ring[NMSG];static int head,count,mtx_ok;
@@ -53,14 +55,14 @@ static size_t write_response(char *p,size_t s,size_t n,void *u) {
  response *r=u;size_t k=s*n;if(k>r->cap-r->len)return 0;memcpy(r->data+r->len,p,k);r->len+=k;r->data[r->len]=0;return k;
 }
 static int public_post(const char *url,const char *body,char *out,int size) {
- CURL *c=curl_easy_init();if(!c)return 0;char err[CURL_ERROR_SIZE];response r={out,0,(size_t)size-1};out[0]=0;
+ CURL *c=curl_easy_init();if(!c)return 0;char err[CURL_ERROR_SIZE];err[0]=0;response r={out,0,(size_t)size-1};out[0]=0;
  sh_curl_common(c,err);curl_easy_setopt(c,CURLOPT_URL,url);curl_easy_setopt(c,CURLOPT_POSTFIELDS,body);
  curl_easy_setopt(c,CURLOPT_WRITEFUNCTION,write_response);curl_easy_setopt(c,CURLOPT_WRITEDATA,&r);
  curl_easy_setopt(c,CURLOPT_CONNECTTIMEOUT,5L);curl_easy_setopt(c,CURLOPT_TIMEOUT,8L);curl_easy_setopt(c,CURLOPT_NOSIGNAL,1L);
  chat_net progress={.running=&run};curl_easy_setopt(c,CURLOPT_NOPROGRESS,0L);curl_easy_setopt(c,CURLOPT_XFERINFOFUNCTION,cn_progress);curl_easy_setopt(c,CURLOPT_XFERINFODATA,&progress);
  struct curl_slist *h=NULL;h=curl_slist_append(h,"Content-Type: application/json");h=curl_slist_append(h,"Origin: https://kick.com");h=curl_slist_append(h,"Accept: application/json");curl_easy_setopt(c,CURLOPT_HTTPHEADER,h);
  CURLcode rc=curl_easy_perform(c);long code=0;curl_easy_getinfo(c,CURLINFO_RESPONSE_CODE,&code);curl_slist_free_all(h);curl_easy_cleanup(c);last_http=code;
- if(rc!=CURLE_OK||code!=200){snprintf(status,sizeof(status),"Chat Kick: HTTP %ld / curl %d",code,rc);return 0;}return 1;
+ if(rc!=CURLE_OK||code!=200){snprintf(status,sizeof(status),"Chat Kick: HTTP %ld / curl %d",code,rc);dlog("chat: pedido de conexion fallo (HTTP %ld, curl %d: %.60s)",code,(int)rc,err);return 0;}return 1;
 }
 static void copy_field(const char *o,const char *key,char *out,int size){const char *v=o?jget(o,key):NULL;out[0]=0;if(v&&!jis_null(v))jstr(v,out,size);}
 /* Quita del chat local un mensaje (id) o todos los de un usuario (who); usado por eventos de Kick y por la moderación desde la Wii. */
@@ -105,7 +107,13 @@ static int provider_url(const char *url,int provider) {
  const char *c;for(c=host;c<slash;c++)if(!((*c>='a'&&*c<='z')||(*c>='0'&&*c<='9')||*c=='.'||*c=='-'))return 0;
  return provider==1?!strncmp(host,"realtime.",9)&&!strcmp(slash,"/connection/websocket"):!strncmp(host,"ws-",3)&&!strncmp(slash,"/app/",5);
 }
-static void *chat_thread(void *unused) {
+#ifdef GUARD_TEST_CHAT
+#include <sys/socket.h>
+#include <netinet/in.h>
+static volatile int test_stuck;
+void chat_test_stuck(void){test_stuck=1;}
+#endif
+static void *chat_thread_body(void *unused) {
  (void)unused;chat_net *net=calloc(1,sizeof(*net));char *response=malloc(16384);if(!net||!response){free(net);free(response);return NULL;}
  int failures=0;
  while(run) {
@@ -129,6 +137,10 @@ static void *chat_thread(void *unused) {
    if(provider==1){char intro[4608];snprintf(intro,sizeof(intro),"{\"id\":1,\"connect\":{\"token\":\"%s\",\"name\":\"js\"}}",token);ok=cn_send(net,intro);memset(token,0,sizeof(token));}
    u64 started=gettime(),last=started;unsigned batch=0;
    while(run&&ok) {
+#ifdef GUARD_TEST_CHAT
+    if(test_stuck){test_stuck=0;int fd=socket(AF_INET,SOCK_STREAM,0);struct sockaddr_in a;memset(&a,0,sizeof a);a.sin_family=AF_INET;a.sin_port=8977;a.sin_addr.s_addr=0x7f000001;
+     guard_sock_add(fd);int cr=connect(fd,(struct sockaddr*)&a,sizeof a);dlog("PRUEBA: chat conectado a un servidor mudo (%d), recv bloqueante...",cr);char b[8];int g=recv(fd,b,sizeof b,0);dlog("PRUEBA: recv volvio %d",g);guard_sock_del(fd);close(fd);}
+#endif
     int rc=cn_message(net);if(rc<0)break;
     if(rc>0){last=gettime();char *save,*line=strtok_r(net->msg,"\n",&save);while(line){int result=process_event(net,line,provider,&subscribed);if(result<=0){ok=0;terminal=result==-2;break;}line=strtok_r(NULL,"\n",&save);}}
     else usleep(20000);
@@ -139,6 +151,7 @@ static void *chat_thread(void *unused) {
    }
    cn_close(net);
   }
+  else if(ok&&allowed)dlog("chat: no se pudo abrir el websocket");
   if(!run)break;
   if(subscribed)failures=0;else if(failures<5)failures++;
   int wait=terminal?300:(1<<failures);snprintf(status,sizeof(status),"Chat desconectado; reintento en %d s",wait);
@@ -176,7 +189,7 @@ static void notice_line(const char*ev){
  else return;
  push_full("",line,"#53FC18",NULL,0,0,0,1);
 }
-static void *notice_thread(void*unused){
+static void *notice_thread_body(void*unused){
  (void)unused;char *buf=malloc(8192);if(!buf)return NULL;long seq=-1;u64 watched=0;int said=0;
  while(nrun){
   char url[512],body[64];u64 now=gettime();
@@ -193,13 +206,36 @@ static void *notice_thread(void*unused){
  }
  free(buf);return NULL;
 }
-static void notices_stop(void){if(nth!=LWP_THREAD_NULL){nrun=0;LWP_JoinThread(nth,NULL);nth=LWP_THREAD_NULL;}}
-static void notices_start(unsigned long b){notices_stop();const char*r=auth_relay();if(!b||!r||!r[0]||strlen(r)>=sizeof(nrelay))return;snprintf(nrelay,sizeof(nrelay),"%s",r);nb=b;nrun=1;if(LWP_CreateThread(&nth,notice_thread,NULL,NULL,160*1024,50)<0){nrun=0;nth=LWP_THREAD_NULL;}}
-void chat_stop(void){notices_stop();if(th!=LWP_THREAD_NULL){run=0;LWP_JoinThread(th,NULL);th=LWP_THREAD_NULL;}}
-void chat_start(const kstream_t *s){chat_stop();if(!mtx_ok){LWP_MutexInit(&mtx,false);mtx_ok=1;}clear_messages();my_badges=0;LWP_MutexLock(mtx);emo_n=0;LWP_MutexUnlock(mtx);snprintf(me,sizeof(me),"%s",auth_login());notices_start(s->broadcaster_user_id);channel_id=s->channel_id;room_id=s->chatroom_id;if(!channel_id||!room_id){snprintf(status,sizeof(status),"Chatroom no disponible");return;}run=1;if(LWP_CreateThread(&th,chat_thread,NULL,NULL,192*1024,48)<0){run=0;th=LWP_THREAD_NULL;}}
+/* rc16: el hilo principal NUNCA espera sin limite a un hilo de chat/avisos.
+ * Antes chat_stop() hacia LWP_JoinThread directo: si el hilo estaba trabado en un socket de IOS
+ * (Wi-Fi que se corta, en la Wii real curl no siempre logra aplicar sus timeouts) la imagen quedaba
+ * congelada con el audio sonando y sin botones. Ahora: se le avisa, a los 1,5 s se le cortan los
+ * sockets y a los 4 s se lo abandona (queda "zombi" y se une cuando termina; mientras tanto no se
+ * arranca otro, porque comparten la bandera run). */
+static volatile int th_done=1,nth_done=1;static lwp_t th_zombie=LWP_THREAD_NULL,nth_zombie=LWP_THREAD_NULL;
+static int pending_start;static kstream_t pending_s;
+static void *chat_thread(void *a){chat_thread_body(a);th_done=1;return NULL;}
+static void *notice_thread(void *a){notice_thread_body(a);nth_done=1;return NULL;}
+static int stop_bounded(lwp_t *t,volatile int *runflag,volatile int *done,lwp_t *zombie,const char *name){
+ if(*t==LWP_THREAD_NULL)return 1;
+ *runflag=0;u64 t0=gettime();int killed=0;guard_where(name);
+ while(!*done){u32 ms=ticks_to_millisecs(gettime()-t0);
+  if(ms>1500&&!killed){killed=1;int n=guard_kill_socks(*t);dlog("chat: %s no termina en 1,5 s; corto %d socket(s)",name,n);}
+  if(ms>4000){dlog("chat: %s sigue trabado; no se lo espera (zombi)",name);*zombie=*t;*t=LWP_THREAD_NULL;return 0;}
+  guard_beat();usleep(10000);}
+ LWP_JoinThread(*t,NULL);*t=LWP_THREAD_NULL;return 1;}
+static int reap(lwp_t *zombie,volatile int *done){if(*zombie==LWP_THREAD_NULL)return 1;if(!*done)return 0;LWP_JoinThread(*zombie,NULL);*zombie=LWP_THREAD_NULL;dlog("chat: el hilo abandonado termino");return 1;}
+static void notices_stop(void){stop_bounded(&nth,&nrun,&nth_done,&nth_zombie,"chat_stop/avisos");}
+static void notices_start(unsigned long b){notices_stop();if(!reap(&nth_zombie,&nth_done))return;const char*r=auth_relay();if(!b||!r||!r[0]||strlen(r)>=sizeof(nrelay))return;snprintf(nrelay,sizeof(nrelay),"%s",r);nb=b;nrun=1;nth_done=0;if(LWP_CreateThread(&nth,notice_thread,NULL,NULL,160*1024,50)<0){nrun=0;nth_done=1;nth=LWP_THREAD_NULL;}}
+void chat_stop(void){pending_start=0;notices_stop();stop_bounded(&th,&run,&th_done,&th_zombie,"chat_stop/chat");guard_where("loop");}
+/* hilo principal, cada cuadro (chat_get): arranca el chat que quedo esperando a un zombi */
+static void chat_retry_pending(void);
+void chat_start(const kstream_t *s){chat_stop();
+ if(!reap(&th_zombie,&th_done)){pending_s=*s;pending_start=1;snprintf(status,sizeof(status),"Chat: cerrando la conexion anterior...");return;}if(!mtx_ok){LWP_MutexInit(&mtx,false);mtx_ok=1;}clear_messages();my_badges=0;LWP_MutexLock(mtx);emo_n=0;LWP_MutexUnlock(mtx);snprintf(me,sizeof(me),"%s",auth_login());notices_start(s->broadcaster_user_id);channel_id=s->channel_id;room_id=s->chatroom_id;if(!channel_id||!room_id){snprintf(status,sizeof(status),"Chatroom no disponible");return;}run=1;th_done=0;if(LWP_CreateThread(&th,chat_thread,NULL,NULL,192*1024,48)<0){run=0;th_done=1;th=LWP_THREAD_NULL;}}
+static void chat_retry_pending(void){if(pending_start&&th_done&&th==LWP_THREAD_NULL){kstream_t s=pending_s;pending_start=0;chat_start(&s);}}
 int chat_gen(void){return gen;}
 const char *chat_status(void){return status;}
-int chat_get(tchat_t *out,int max){if(!mtx_ok)return 0;LWP_MutexLock(mtx);int i,n=count<max?count:max;for(i=0;i<n;i++)out[i]=ring[(head+count-n+i)%NMSG];LWP_MutexUnlock(mtx);return n;}
+int chat_get(tchat_t *out,int max){chat_retry_pending();if(!mtx_ok)return 0;LWP_MutexLock(mtx);int i,n=count<max?count:max;for(i=0;i<n;i++)out[i]=ring[(head+count-n+i)%NMSG];LWP_MutexUnlock(mtx);return n;}
 
 void chat_local_echo(const char*name,const char*text){if(mtx_ok)push_full(name,text,"#53FC18",NULL,0,my_badges,1,0);}
 int chat_send_text(const char*text){(void)text;return 0;}

@@ -22,6 +22,7 @@
 #include <fat.h>
 #include <curl/curl.h>
 #include "tv.h"
+#include "guard.h"
 #include "dlog.h"
 #include "mem2.h"
 #include "social.h"
@@ -824,7 +825,7 @@ static void draw_chat_panel(void) {
     gfx_rect(CHAT_X, 0, 1, SCR_H, 0x000000);
     text_bold(&font_small, CHAT_X + 10, 10, "CHAT DEL DIRECTO", C_TEXT);
     gfx_rect(CHAT_X, 34, CHAT_W, 1, C_LINE);
-    int y = SCR_H - 138;
+    int y = SCR_H - 106;   /* rc16: el chat baja hasta los 3 botones que quedan */
     const char *me = auth_ready() ? auth_login() : "";
     char at_me[72]; snprintf(at_me, sizeof(at_me), "@%s", me);
     for (i = n - 1; i >= 0 && y > 40; i--) {
@@ -863,7 +864,7 @@ static void draw_chat_panel(void) {
         char **ln;int nn=ui_wrap(&font_small,chat_status()[0]?chat_status():"Esperando mensajes...",CHAT_W-20,&ln);
         for(i=0;i<nn;i++){gfx_text(&font_small,CHAT_X+10,190+i*16,ln[i],C_FAINT);free(ln[i]);}free(ln);
     }
-    if(ui_button(CHAT_X+8,SCR_H-130,CHAT_W-16,26,CHAT_W<240?"Resp. / moderar":"Responder / moderar",IC_CHAT,BS_NORMAL,0))chat_actions_pressed=1;
+    /* rc16: sin boton "Responder / moderar" (pedido de Tobias); abajo en el pad sigue abriendo el menu */
     if(ui_button(CHAT_X+8,SCR_H-98,CHAT_W-16,26,social_label(pinfo.slug),IC_HEART,BS_ACCENT,0))watch_social_pressed=1;
     if(ui_button(CHAT_X+8,SCR_H-66,CHAT_W-16,26,"Suscribirse",0,BS_NORMAL,0))watch_social_pressed=2;
     if(ui_button(CHAT_X+8,SCR_H-34,CHAT_W-16,26,"Escribir",IC_CHAT,BS_ACCENT,0))chat_write_pressed=1;
@@ -1146,6 +1147,27 @@ u32 at_hook(void) {
     case 18: if(at_ms()>2500){at_next();b=WPAD_BUTTON_A;LOG("picker: A -> Enviar (dry run)");}break;
     case 19: if(at_ms()>5000){at_next();LOG("picker end status=%s",auth_status());quit=1;}break;
     }
+#elif defined(AUTOTEST_RC16)
+    /* rc16: panel del chat sin "Responder / moderar" + pruebas del vigilante (GUARD_TEST) */
+    switch(at_step){
+    case 0: if(at_wait(SCR_HOME,8000)){at_next();open_channel(NULL,AT_CHAN);}break;
+    case 1: if(at_wait(SCR_CHAN,6000)){at_next();start_watch();}break;
+    case 2: if(at_wait(SCR_WATCH,40000)){at_next();LOG("rc16: shot panel (t=%.0f) chat=%s",ticks_to_millisecs(gettime()-t_start)/1000.0,chat_status());}break;
+#ifdef GUARD_TEST_CHAT
+    case 3: if(at_ms()>5000){at_next();LOG("rc16: hilo del chat -> recv bloqueante (simula socket de IOS colgado)");
+#ifndef CHAT_NOSTUCK
+chat_test_stuck();
+#endif
+}break;
+    case 4: if(at_ms()>4000){at_next();u64 t0=gettime();LOG("rc16: chat_stop() desde el hilo principal...");chat_stop();LOG("rc16: chat_stop() volvio en %u ms",(unsigned)ticks_to_millisecs(gettime()-t0));}break;
+    case 5: if(at_ms()>3000){at_next();LOG("rc16: chat_start()");chat_start(&pinfo);}break;
+    case 6: if(at_ms()>30000){at_next();tchat_t m[1];int n=chat_get(m,1);LOG("rc16: chat despues: %s | ultimo=%s: %s",chat_status(),n?m[0].name:"",n?m[0].text:"");quit=1;}break;
+#elif defined(GUARD_TEST)
+    case 3: if(at_ms()>5000){at_next();LOG("rc16: bloqueo simulado del hilo principal (esperando HOME de xdotool)");guard_test_hang(1);}break;
+#else
+    case 3: if(at_ms()>20000){at_next();quit=1;}break;
+#endif
+    }
 #elif defined(AUTOTEST_SOAK)
     /* rc14/rc8: soak de memoria: canal con chat real + 3 emotes animados distintos cada 2,5 s */
     switch(at_step){
@@ -1189,6 +1211,7 @@ int main(int argc, char **argv) {
     if (fat_ok) cfg_load();
     t_start = gettime();
     dlog_init(fat_ok);
+    guard_init();   /* rc16: vigilante del hilo principal (HOME de emergencia, log, corta sockets) */
     dlog("KickWii " TV_VERSION " | IOS %d | pantalla %s | SD %s", IOS_GetVersion(), gfx_widescreen() ? "16:9" : "4:3", fat_ok ? "ok" : "no");
     {
         extern unsigned char __bss_end[];
@@ -1217,8 +1240,14 @@ int main(int argc, char **argv) {
         load_live(1);
     }
     while (SYS_MainLoop() && !quit) {
+        guard_where("loop: log");
         dlog_flush(0);
-        if(auth_due()){chat_stop();thumbs_pause(1);auth_ensure();if(screen==SCR_WATCH&&watch_chat_started)chat_start(&pinfo);if(screen!=SCR_WATCH)thumbs_pause(0);}
+        /* rc16: la revision periodica de la sesion (cada ~58 min o al vencer el token) ya no corre
+           mientras se mira un directo: cortaba el chat y hacia un pedido HTTP bloqueante en el hilo
+           principal (si se trababa, imagen congelada + audio + botones muertos). Se hace al salir del
+           directo; enviar un mensaje con el token vencido lo renueva igual (401 -> renovar). */
+        if(screen!=SCR_WATCH&&auth_due()){guard_where("loop: auth_ensure");chat_stop();thumbs_pause(1);auth_ensure();thumbs_pause(0);}
+        guard_where("loop: botones");
 
         u32 d = in_poll();
         int k;
@@ -1245,14 +1274,17 @@ int main(int argc, char **argv) {
                 if (watch_details && !watch_chat_started) {
                     watch_chat_started = 1; chat_start(&pinfo);
                 }}
+            guard_where("watch: tp_picture");
             curpic = tp_picture();
+            guard_where("watch: dibujo");
             int wrote = watch_frame(d != 0);
+            guard_where("watch: acciones");
             if(watch_social_pressed||(d&(WPAD_BUTTON_MINUS|WPAD_BUTTON_2))){int sub=watch_social_pressed?watch_social_pressed==2:!!(d&WPAD_BUTTON_2);watch_social_pressed=0;chat_stop();social_screen(pinfo.slug,sub);if(watch_chat_started)chat_start(&pinfo);thumbs_pause(1);fs_details_was=fs_osd_was=-1;fs_last_pic=NULL;osd_t=gettime();curpic=NULL;continue;}
             if(chat_actions_pressed||(d&WPAD_BUTTON_DOWN)){chat_actions_pressed=0;if(!watch_chat_started){watch_chat_started=1;chat_start(&pinfo);ui_toast("Abriendo el chat: espera unos mensajes y volve a pulsar abajo.");}else if(!auth_ready()){chat_stop();auth_screen();if(watch_chat_started)chat_start(&pinfo);}else chat_actions(&pinfo);thumbs_pause(1);fs_details_was=fs_osd_was=-1;fs_last_pic=NULL;osd_t=gettime();curpic=NULL;continue;}
             if(chat_write_pressed||(d&WPAD_BUTTON_1)){chat_write_pressed=0;if(!auth_ready()){chat_stop();auth_screen();if(watch_chat_started)chat_start(&pinfo);}if(auth_ready()&&!watch_chat_started){watch_chat_started=1;chat_start(&pinfo);}if(auth_ready())auth_compose(pinfo.slug,pinfo.broadcaster_user_id);thumbs_pause(1);fs_details_was=fs_osd_was=-1;fs_last_pic=NULL;osd_t=gettime();curpic=NULL;continue;}
 
-            if (!wrote) VIDEO_WaitVSync();
-            if (d & WPAD_BUTTON_B) { stop_watch(); screen = SCR_CHAN; }
+            if (!wrote) { guard_where("watch: vsync"); VIDEO_WaitVSync(); }
+            if (d & WPAD_BUTTON_B) { guard_where("watch: B -> stop_watch"); stop_watch(); screen = SCR_CHAN; }
             if (d & WPAD_BUTTON_LEFT) { tp_set_volume(tp_volume() - 24); osd_t = gettime(); }
             if (d & WPAD_BUTTON_RIGHT) { tp_set_volume(tp_volume() + 24); osd_t = gettime(); }
             if (d & WPAD_BUTTON_A) osd_t = ticks_to_millisecs(gettime() - osd_t) < 5000 ? 0 : gettime();
