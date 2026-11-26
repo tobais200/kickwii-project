@@ -11,7 +11,7 @@ Sign in with a QR code. The session is saved on SD, or on USB if no SD is presen
 
 Settings has an optional field for a companion server on a PC in your network (HTTP proxy or transcoded playback). Without a server, the Wii talks to Kick over HTTPS for thumbnails, avatars, categories, banners, video, and chat.
 
-Controls: Wii Remote pointer and buttons, including the D-Pad (cruceta). A Classic Controller button layout, a GameCube controller, and a USB keyboard are also supported.
+Controls: Wii Remote pointer and buttons, including the D-Pad (cruceta). A Classic Controller (buttons and left stick as pointer, same as the GameCube stick), a GameCube controller, and a USB keyboard are also supported.
 
 This is an unofficial fan project, not affiliated with or endorsed by Kick or Nintendo; the icon is original art. Intro music: Claude Debussy, Clair de lune, piano by Laurens Goedhart (public domain, Wikimedia Commons). Licensed under GPL-3.0.</long_description>
 </app>
