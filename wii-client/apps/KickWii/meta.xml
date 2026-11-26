@@ -1,34 +1,17 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <app version="1">
   <name>KickWii (no oficial)</name>
-  <coder>fan-made</coder>
-  <version>1.3-rc17</version>
-  <release_date>20261123</release_date>
-  <short_description>Directos de Kick con la interfaz de Kick</short_description>
-  <long_description>Cliente NO OFICIAL hecho por fans. No esta afiliado ni autorizado por Kick ni por Nintendo; el icono es arte propio.
+  <coder>tobais200</coder>
+  <version>1.0</version>
+  <release_date>20261125</release_date>
+  <short_description>Unofficial Kick client for the Nintendo Wii</short_description>
+  <long_description>Watch Kick live streams on your Wii. Browse a live home grid and a category catalog, search for channels, open a channel page, and use live chat (read anonymously, or write when signed in). Live playback is H.264 + AAC decoded on the Wii. There is no VOD support.
 
-Interfaz al estilo kick.com: tema oscuro con verde #53FC18, barra lateral de canales recomendados, grilla de directos en vivo con miniatura, EN VIVO, espectadores, avatar, titulo y categoria, buscador con teclado en pantalla, pagina de canal y reproductor a pantalla completa (H.264 + AAC decodificados en la Wii).
+Sign in with a QR code. The session is saved on SD, or on USB if no SD is present, and can be refreshed or signed out from Settings. Follow and Subscribe open a QR code to the official Kick page on your phone; the Wii does not make payments or change follows by itself. 4:3 and 16:9 are supported. Adult and gambling channels are hidden by default.
 
-Recomendado: correr kickwii_server.py en una PC de la misma red y poner su IP en Ajustes (sd:/apps/KickWii/server.txt). Con el servidor hay miniaturas, video por HTTP (proxy 360p) o transcodificado a 270p con ffmpeg. Sin servidor la Wii descarga miniaturas, avatares, categorias y banners desde Kick por HTTPS. Explorar carga el catalogo publico real en segundo plano, con portadas, espectadores, grupos, busqueda y scroll (sujeto a los limites del proveedor); cada categoria abre sus directos reales. Interfaz 4:3/16:9 y reloj corregido por HTTPS Date. Incluye otros directos debajo del reproductor. Chat publico anonimo solo lectura por WSS (proveedor actual Centrifugo, negociado con Kick). Sin listado/reproduccion VOD; Cloudflare puede rechazar una red.
+Settings has an optional field for a companion server on a PC in your network (HTTP proxy or transcoded playback). Without a server, the Wii talks to Kick over HTTPS for thumbnails, avatars, categories, banners, video, and chat.
 
-Solo lectura de datos publicos: sin login ni envio de mensajes. Por defecto oculta canales +18 y de apuestas.
+Controls: Wii Remote pointer and buttons, including the D-Pad (cruceta). A Classic Controller button layout, a GameCube controller, and a USB keyboard are also supported.
 
-Al arrancar muestra la pantalla de carga (wordmark KICK verde pixelado sobre negro) con "Clair de lune" de Debussy (piano Laurens Goedhart, dominio publico, Wikimedia Commons). A salta la intro, B la salta y silencia la musica.
-
-Controles: puntero + A elegir, cruceta mover, 1 buscar, 2 actualizar, - idioma, + categorias/chat/pantalla completa, B ajustes/volver, HOME salir. En Explorar: 1 buscar categoria, - grupos, 2 actualizar.
-
-RC4f: OAuth/QR opcional, chat con escritura autenticada, corazon Seguir por QR y QR de Suscribirse. Faltan configurar los IDs publicos del editor; sin ellos se mantiene el uso anonimo y se muestra Sin configurar. Kick requiere ademas relay PKCE del editor; no se distribuyen secretos. Ajustes &gt; Cuenta: renovar/cerrar sesion. Viendo un directo: 1 escribir, - seguir, 2 suscribirse, + pantalla completa. La Wii no realiza pagos. Ver LOGIN-RC4F.md.
-
-RC5: chip de cuenta arriba (avatar y nombre) con Mi cuenta y Cerrar sesion; chat con respuestas, menciones, emotes del canal y tus mensajes resaltados; Mi canal para cambiar titulo y categoria; moderacion (borrar mensaje, expulsar 10 min, banear) si sos moderador; avisos en vivo de follows y subs. Cada funcion pide su permiso de Kick; si falta, la Wii lo explica. Ver LEEME-RC5.md.
-
-RC6: arregla el video que quedaba en 0 fps despues de un rato en la Wii real. Un vigilante reinicia el directo solo (Reconectando...) si dejan de llegar segmentos, el video o el audio se congelan o hay un error de red; corta conexiones colgadas, renueva el acceso de Kick sin limite por sesion y baja a 160p si la Wii no llega. Guarda un registro en sd:/apps/KickWii/log.txt (sin tokens) para mandar si vuelve a pasar. Ver LEEME-RC6.md.
-
-RC7: en la vista con chat (video arriba, recomendaciones abajo) aparecen los botones Seguir y Suscribirse al lado de la barra de ayuda, y el hint incluye 2: suscribir. Ver LEEME-RC7.md.
-RC8: se sacan los botones Seguir y Suscribirse de abajo de las recomendaciones; quedan solo en el panel del chat. El hint corto incluye 2:suscribir. Ver LEEME-RC8.md.
-
-RC15: la interfaz ocupa casi todo el ancho del TV en 4:3 y 16:9 (margen chico a los costados para el overscan) y se quitaron la franja de color de abajo y la linea verde (barra de desplazamiento) al costado de la grilla; los bordes fuera de la zona segura ahora son negros. Antes (RC14): los emotes animados se mueven en el chat (cuadros chicos con limite de RAM: si no entran, queda la imagen fija) y el teclado del chat tiene la tecla Emotes (o 2): grilla con imagenes de los emotes del canal, vistos, globales y emojis. RC13: imagenes y banners cargan mas rapido y quedan guardados en la SD; emotes como imagenes en el chat.
-
-RC12: la sesion de Kick queda guardada al salir y volver a entrar (en la SD, o en el USB si no hay SD); si el token vencio se renueva solo y el QR aparece solo si Kick rechaza la renovacion. Margen seguro en los bordes para TVs que recortan la imagen (overscan), en 4:3 y 16:9.
-RC11: arreglado el cuelgue al abrir el canal en una Wii real sin tarjeta SD montada (por ejemplo, solo con disco USB): ya no crea carpetas en un dispositivo inexistente.
-RC9: libera MEM1 (las tablas grandes de FFmpeg y el lienzo pasan a MEM2) para que el canal no se caiga al abrir en una Wii real por falta de RAM. Se mantienen el vigilante de rc6 y la interfaz de rc8. Ver LEEME-RC9.md.</long_description>
+This is an unofficial fan project, not affiliated with or endorsed by Kick or Nintendo; the icon is original art. Intro music: Claude Debussy, Clair de lune, piano by Laurens Goedhart (public domain, Wikimedia Commons). Licensed under GPL-3.0.</long_description>
 </app>

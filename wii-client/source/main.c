@@ -1123,6 +1123,17 @@ u32 at_hook(void) {
         LOG("LANG PASS: 12 changes, 3 complete cycles, 192 scroll inputs, refresh; language=%s n=%d filter=%d",k_langs[k_lang],live.n,nflt);
         quit=1;at_next();
     }
+#elif defined(AUTOTEST_HOMEKEY)
+    /* HOME en la pantalla de categorias (o en el inicio con HK_STAY_HOME) */
+    switch(at_step){
+#ifdef HK_STAY_HOME
+    case 0: if(at_wait(SCR_HOME,14000)){at_next();LOG("homekey: inicio, inyecto HOME");b=WPAD_BUTTON_HOME;}break;
+#else
+    case 0: if(at_wait(SCR_HOME,9000)){at_next();browse_enter();LOG("homekey: pantalla categorias");}break;
+    case 1: if(at_wait(SCR_BROWSE,8000)){at_next();LOG("homekey: inyecto HOME");b=WPAD_BUTTON_HOME;}break;
+#endif
+    case 2: if(at_ms()>15000){at_next();quit=1;}break;
+    }
 #elif defined(AUTOTEST_PICKER)
     /* rc14: selector de emotes en el teclado del chat; el envio es SEND_DRYRUN (no sale nada) */
     switch(at_step){
@@ -1233,6 +1244,9 @@ int main(int argc, char **argv) {
     ui_set_backdrop(draw_home);
     rebuild_filter();
     int net = intro_run();          /* intro con la imagen de carga + Clair de lune; la red se inicia en paralelo */
+#ifdef KBD_BENCH
+    { char kbq[40] = ""; ui_set_backdrop(draw_home); sui_text_input("Buscar", "Escribi el nombre de un canal", kbq, sizeof(kbq) - 1); quit = 1; }
+#endif
     if (!net) ui_toast("La red no est\xc3\xa1 lista; toc\xc3\xa1 Actualizar para reintentar.");
     else {
         check_server();
@@ -1375,11 +1389,17 @@ int main(int argc, char **argv) {
             if (d & WPAD_BUTTON_2) { kstream_t c = chan; open_channel(&c, c.slug); }
         }
     }
-    kc_stop();chat_stop();tp_stop();dlog("salida");dlog_flush(1);
-    if (atlog) fclose(atlog);
+    /* HOME / Salir: primero se muestra "Saliendo...", despues se cortan los pedidos de red, se frenan los
+     * hilos de miniaturas y la pantalla se deja en negro (nada a medio dibujar mientras el cargador toma la RAM). */
     gfx_clear(C_BG);
     wordmark(SCR_W / 2 - 50, 200);
     gfx_text_c(&font_bold, SCR_W / 2, 250, "Saliendo...", C_DIM);
     gfx_present();
+    guard_kill_socks(LWP_THREAD_NULL);
+    kc_stop();chat_stop();tp_stop();
+    thumbs_pause(1);
+    dlog("salida");dlog_flush(1);
+    if (atlog) fclose(atlog);
+    gfx_black_now();
     return 0;
 }
