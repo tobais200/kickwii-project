@@ -13,10 +13,11 @@
 #include <gctypes.h>
 #include "gfx.h"
 #include "auth.h"
+#include "i18n.h"
 
 #include "clock_sync.h"
 
-#define TV_VERSION "1.0"
+#define TV_VERSION "1.1"
 #define TV_UA          "Mozilla/5.0 (Nintendo Wii; U; ; 3642; es) AppleWebKit/535.19 (KHTML, like Gecko) KickWii/" TV_VERSION
 #define TV_CFG_DIR     "sd:/apps/KickWii/"
 #define TV_APP_NAME    "KickWii"
@@ -150,13 +151,15 @@ void kstream_style(kstream_t *s);
 int  kick_is_gambling(const char *cat_name, const char *cat_slug);
 
 enum { PM_PROXY = 0, PM_TRANSCODE, PM_DIRECT, PM_N };   /* modo de reproduccion */
-extern const char *pm_names[PM_N];
+const char *pm_name(int i);   /* translated playback-mode name */
 extern char k_server[128];      /* "http://192.168.0.10:8787" o "" (= directo a kick.com) */
 extern int  k_server_ok;        /* ultimo /wii/health respondio */
 extern int  k_play_mode;
 extern int  k_lang;             /* indice en k_langs */
 extern const char *k_langs[];   /* "es", "all", "en", "pt" */
-extern const char *k_lang_names[];
+const char *k_lang_name(int i);   /* stream-language filter name */
+void k_lang_default_from_ui(void);
+extern int ui_lang_explicit;
 extern int  k_nlangs;
 extern int  k_show_mature;      /* 0 = ocultar +18 y apuestas (por defecto) */
 extern int  k_last_mock;        /* la ultima lista vino con datos DEMO */
@@ -178,7 +181,7 @@ int  kick_parse_channel(const char *json, kstream_t *info, char *url, int usz);
 extern int k_chat_on;
 /* badge: 1 moderador, 2 broadcaster, 4 suscriptor, 8 VIP. echo = eco local aun sin id de Kick. */
 enum { CB_MOD = 1, CB_OWNER = 2, CB_SUB = 4, CB_VIP = 8 };
-/* rc13: ne emotes en text[eat[i]..+elen[i]] (texto ":nombre:"), id de Kick en eid. */
+/* ne emotes en text[eat[i]..+elen[i]] (texto ":nombre:"), id de Kick en eid. */
 typedef struct {char name[28],text[200];u32 color;int sys;char id[40];unsigned long uid;int badge,echo;unsigned char ne,eat[8],elen[8];char eid[8][48];} tchat_t;
 int emote_url(const char *id, char *out, int cap);
 void chat_test_inject(void);            /* chat.c */
@@ -195,34 +198,33 @@ void emote_display(const char *in, char *out, int cap);
 void emote_parse_preview(const char *in, tchat_t *m);
 /* account.c */
 void chat_forget(const char *id, const char *who);
-void chat_actions(const kstream_t *s);
 int emote_pick(const char *slug, char *out, int cap);
 
 /* ---- thumbs.c: miniaturas/avatares RGB del companion, en un hilo aparte ---- */
 typedef struct { int w, h; u32 *px; } kimg_t;
-/* rc14: emote animado reducido al alto del chat. px = n cuadros w*h RGB565, ANIM_KEY = transparente. */
+/* emote animado reducido al alto del chat. px = n cuadros w*h RGB565, ANIM_KEY = transparente. */
 #define ANIM_KEY 0xF81F
 typedef struct { int n, w, h, total; u16 *px; u16 *dly; u32 bytes; } kanim_t;
-const kimg_t *emote_get_anim(const char *url, const kanim_t **anim); /* rc14: tambien devuelve la animacion si hay */
+const kimg_t *emote_get_anim(const char *url, const kanim_t **anim); /* tambien devuelve la animacion si hay */
 void thumbs_mem(char *out, int cap);
 void thumbs_anim_gc(void);
-void chat_anim_begin(void);                /* rc14: antes de redibujar todo el panel de chat */
+void chat_anim_begin(void);                /* antes de redibujar todo el panel de chat */
 void chat_anim_reset(void);
 int  chat_anim_tick(void);                 /* avanza los emotes animados visibles; filas reescritas */
 int  chat_anim_count(void);
 void chat_anim_stats(unsigned *rows, unsigned *ticks);
 void chat_test_soak(int k);
-void chat_test_stuck(void);           /* rc16: prueba GUARD_TEST_CHAT */
-/* rc14: selector de emotes del teclado del chat (emote_ui.c) */
+void chat_test_stuck(void);           /* prueba GUARD_TEST_CHAT */
+/* selector de emotes del teclado del chat (emote_ui.c) */
 typedef struct { char name[40]; char id[48]; unsigned char group, locked; char note[24]; } emo_item_t;
 int emote_grid(const char *title, const emo_item_t *it, int n, const char *const *gname, int ng, int *sel);
 int emote_preview_draw(const tchat_t *m, int x, int y, int w);
 extern int (*sui_kb_emote_hook)(char *out, int cap);
-extern int (*sui_kb_preview)(const char *buf, int x, int y, int w);       /* rc14: estado de memoria de imagenes (para logs) */
+extern int (*sui_kb_preview)(const char *buf, int x, int y, int w);       /* estado de memoria de imagenes (para logs) */
 void thumbs_init(void);
 void thumbs_pause(int p);                 /* 1 = no bajar nada (video a pantalla completa) */
 const kimg_t *thumb_get(const char *path); /* NULL si todavia no esta; la pide */
-const kimg_t *emote_get(const char *url);  /* rc13: cola de emotes del chat (tambien durante el video) */
+const kimg_t *emote_get(const char *url);  /* cola de emotes del chat (tambien durante el video) */
 void thumbs_flush(void);                  /* cambia el servidor: vaciar */
 int  thumbs_pending(void);
 void thumbs_frame(void);

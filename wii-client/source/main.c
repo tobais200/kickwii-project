@@ -97,7 +97,7 @@ static void browse_move(u32 d) {
         browse_visible();
     }
 }
-/* rc10: scroll de la grilla de categorias con el puntero (como la grilla de inicio).
+/* scroll de la grilla de categorias con el puntero (como la grilla de inicio).
    Mueve la ventana visible una fila y arrastra la seleccion para que browse_visible()
    no la devuelva a la fila anterior. */
 static u64 browse_edge_t = 0;
@@ -123,7 +123,7 @@ static void browse_edge_scroll(void) {
     browse_edge_t=now;browse_scroll(dr);
 }
 static void browse_enter(void) {
-    if(!kc_start())ui_toast("No se pudo cargar el catalogo de Kick.");
+    if(!kc_start())ui_toast(T("No se pudo cargar el catalogo de Kick."));
     browse_sync();browse_visible();screen=SCR_BROWSE;
 }
 static int sel = 0;                  /* indice en flt (o "mostrar mas" = nflt) */
@@ -153,8 +153,8 @@ static int at_block = 0;             /* prueba automatica: no avanzar el guion d
 /* ---------------------------------------------------------------- utilidades */
 static void fmt_count(int n, char *o, int sz) {
     if (n >= 1000000) snprintf(o, sz, "%d,%d M", n / 1000000, (n / 100000) % 10);
-    else if (n >= 10000) snprintf(o, sz, "%d mil", n / 1000);
-    else if (n >= 1000) snprintf(o, sz, "%d,%d mil", n / 1000, (n / 100) % 10);
+    else if (n >= 10000) snprintf(o, sz, T("%d mil"), n / 1000);
+    else if (n >= 1000) snprintf(o, sz, T("%d,%d mil"), n / 1000, (n / 100) % 10);
     else snprintf(o, sz, "%d", n);
 }
 
@@ -175,8 +175,8 @@ static void fmt_since(const char *start, char *o, int sz) {
     long now = (long)sh_clock_now() + k_time_off;
     long mins = (now - t0) / 60;
     if (mins < 0 || mins > 60 * 72) return;
-    if (mins < 60) snprintf(o, sz, "hace %ld min", mins);
-    else snprintf(o, sz, "hace %ld h %ld min", mins / 60, mins % 60);
+    if (mins < 60) snprintf(o, sz, T("hace %ld min"), mins);
+    else snprintf(o, sz, T("hace %ld h %ld min"), mins / 60, mins % 60);
 }
 
 static int hidden_by_filter(const kstream_t *s) { return !k_show_mature && (s->mature || s->gambling); }
@@ -188,7 +188,7 @@ static void rebuild_filter(void) {
     nflt = 0; nhidden = 0;
     if (!flt || (live.n && !live.v)) {
         ncats = cat_sel = sel = 0;
-        ui_toast("Sin memoria para filtrar la lista. Reintenta actualizar.");
+        ui_toast(T("Sin memoria para filtrar la lista. Reintenta actualizar."));
         return;
     }
     /* categorias (en orden de aparicion = por espectadores) */
@@ -225,7 +225,7 @@ static void load_live(int reset) {
     ui_backdrop_suspend(1);
     char err[220] = "";
     int more = 0;
-    sui_busy("KickWii", reset ? "Cargando canales en vivo..." : "Cargando m\xc3\xa1s canales...");
+    sui_busy("KickWii", reset ? T("Cargando canales en vivo...") : T("Cargando m\xc3\xa1s canales..."));
     if (reset) {
         thumbs_flush();
         /* busy_draw()/curl progress can re-enter draw_home(): never leave stale
@@ -254,7 +254,7 @@ static void load_live(int reset) {
 static void check_server(void) {
     char err[200] = "";
     if (!k_server[0]) { k_server_ok = 0; return; }
-    sui_busy("KickWii", "Conectando con el servidor companion...");
+    sui_busy("KickWii", T("Conectando con el servidor companion..."));
     int ok; BUSY(ok = kw_health(err, sizeof(err)));
     sui_busy_end();
     if (ok) {
@@ -272,7 +272,7 @@ static void check_server(void) {
 static void open_channel(const kstream_t *from, const char *slug) {
     char err[220] = "";
     if (from) chan = *from; else { memset(&chan, 0, sizeof(chan)); snprintf(chan.slug, sizeof(chan.slug), "%s", slug); }
-    sui_busy("KickWii", "Abriendo canal...");
+    sui_busy("KickWii", T("Abriendo canal..."));
     int r; BUSY(r = kw_channel(slug, &chan, err, sizeof(err)));
     sui_busy_end();
     snprintf(chan_err, sizeof(chan_err), "%s", r < 0 ? err : "");
@@ -293,7 +293,7 @@ static void warm_watch_images(void) {
     const char *paths[8];int n=0,i,ready;
     paths[n++]=chan.avatar;paths[n++]=chan.thumb;paths[n++]=chan.banner;paths[n++]=chan.catart;
     for(i=0;i<4;i++){const kstream_t *r=recommendation(chan.slug,i);if(r)paths[n++]=r->thumb;}
-    ui_set_backdrop(NULL);sui_busy("KickWii","Preparando imagenes del directo...");
+    ui_set_backdrop(NULL);sui_busy("KickWii",T("Preparando imagenes del directo..."));
     thumbs_pause(0);at_block=1;u64 start=gettime();
     do {thumbs_frame();ready=0;for(i=0;i<n;i++)if(!paths[i][0]||thumb_get(paths[i]))ready++;
         ui_busy_tick();if(ready==n)break;usleep(50000);
@@ -327,14 +327,14 @@ static void stop_watch(void) { chat_stop();tp_stop(); playing = 0; thumbs_pause(
 static void do_search(void) {
     char q[48];
     snprintf(q, sizeof(q), "%s", search_q);
-    if (!sui_text_input("Buscar en Kick", "Escrib\xc3\xad el nombre de un canal o su slug (kick.com/slug). +: buscar", q, sizeof(q) - 1)) return;
+    if (!sui_text_input(T("Buscar en Kick"), T("Escrib\xc3\xad el nombre de un canal o su slug (kick.com/slug). +: buscar"), q, sizeof(q) - 1)) return;
     char *p = q; while (*p == ' ') p++;
     int n = strlen(p); while (n && p[n - 1] == ' ') p[--n] = 0;
     if (!*p) return;
     snprintf(search_q, sizeof(search_q), "%s", p);
     klist_clear(&results); rsel = 0; rscroll = 0;
     char err[220] = "";
-    sui_busy("Buscar", "Buscando canales...");
+    sui_busy(T("Buscar"), T("Buscando canales..."));
     int r; BUSY(r = kw_search(search_q, &results, err, sizeof(err)));
     sui_busy_end();
     snprintf(search_err, sizeof(search_err), "%s", r < 0 ? err : "");
@@ -346,9 +346,9 @@ static void do_search(void) {
 static void text_bold(const Font *f, int x, int y, const char *s, u32 c) { gfx_text(f, x, y, s, c); gfx_text(f, x + 1, y, s, c); }
 
 static void live_pill(int x, int y) {
-    int w = gfx_text_w(&font_small, "EN VIVO") + 12;
+    int w = gfx_text_w(&font_small, T("EN VIVO")) + 12;
     gfx_rrect(x, y, w, 17, 4, C_ACCENT, 255);
-    text_bold(&font_small, x + 6, y + 1, "EN VIVO", C_DARK);
+    text_bold(&font_small, x + 6, y + 1, T("EN VIVO"), C_DARK);
 }
 
 static void viewers_pill(int x, int y, int n, const char *suffix) {
@@ -403,30 +403,35 @@ static int topbar(void) {
     gfx_rect(0, TOP_H - 1, SCR_W, 1, 0x000000);
     wordmark(14, 10);
     if (ui_click(10, 4, 110, 40)) act = TB_HOME;
-    if(ui_button(110,10,44,28,"Cat.",0,BS_NORMAL,screen==SCR_BROWSE))act=TB_BROWSE;
+    /* Cat. button and account chip grow with the translated label; the search box takes what is left. */
+    int catw = gfx_text_w(&font_bold, T("Cat.")) + 16; if (catw < 44) catw = 44;
+    const char *alab = auth_ready() ? auth_login() : (auth_has_session() ? (auth_login()[0] ? auth_login() : T("Cuenta")) : T("Entrar"));
+    int acw = gfx_text_w(&font_small, alab) + 40; if (acw < 84) acw = 84; if (acw > 124) acw = 124;
+    int acx = SCR_W - 168 - acw;
+    if(ui_button(110,10,catw,28,T("Cat."),0,BS_NORMAL,screen==SCR_BROWSE))act=TB_BROWSE;
     /* buscador */
-    int sx = 160, sw = SCR_W-420, sy = 10, sh = 28;
+    int sx = 110 + catw + 6, sw = acx - 8 - sx, sy = 10, sh = 28;
     int hov = ui_hover(sx, sy, sw, sh);
     gfx_rrect(sx, sy, sw, sh, 8, C_PANEL, 255);
     gfx_rframe(sx, sy, sw, sh, 8, 1, hov ? C_ACCENT : C_LINE, 255);
-    gfx_text_fit(&font_small, sx + 12, sy + 6, search_q[0] ? search_q : "Buscar canal o slug...", search_q[0] ? C_TEXT : C_FAINT, sw - 60);
+    gfx_text_fit(&font_small, sx + 12, sy + 6, search_q[0] ? search_q : T("Buscar canal o slug..."), search_q[0] ? C_TEXT : C_FAINT, sw - 60);
     gfx_rrect(sx + sw - 36, sy, 36, sh, 8, C_PANEL2, 255);
     gfx_icon(IC_SEARCH, sx + sw - 18, sy + sh / 2, 14, C_TEXT);
     if (ui_click(sx, sy, sw, sh)) act = TB_SEARCH;
     /* estado del servidor */
     u32 dc = !k_server[0] ? C_WARN : (k_server_ok ? (k_last_mock ? C_WARN : C_ACCENT) : C_LIVE);
-    const char *dl = !k_server[0] ? "Directo" : (k_server_ok ? (k_last_mock ? "DEMO" : "LAN") : "Sin servidor");
+    const char *dl = !k_server[0] ? T("Directo") : (k_server_ok ? (k_last_mock ? T("DEMO") : T("LAN")) : T("Sin servidor"));
     gfx_circle(SCR_W-164, 24, 5, dc, 255);
     gfx_text(&font_small, SCR_W-154, 16, dl, C_DIM);
     /* chip de cuenta: avatar + nombre (o "Entrar") */
     {
-        int cx = SCR_W - 252, cw = 84, hovc = ui_hover(cx, 8, cw, 32);
+        int cx = acx, cw = acw, hovc = ui_hover(cx, 8, cw, 32);
         gfx_rrect(cx, 8, cw, 32, 16, hovc ? C_PANEL2 : C_PANEL, 255);
         gfx_rframe(cx, 8, cw, 32, 16, 1, auth_ready() ? C_ACCENT : C_LINE, 255);
         const kimg_t *ai = auth_ready() && auth_avatar()[0] ? thumb_get(auth_avatar()) : NULL;
         if (ai) gfx_blit_scaled_round(ai->px, ai->w, ai->h, cx + 4, 12, 24, 24, 12);
         else { gfx_circle(cx + 16, 24, 12, auth_ready() ? C_ACCENT : C_PANEL2, 255); gfx_icon(IC_USER, cx + 16, 24, 14, auth_ready() ? C_DARK : C_DIM); }
-        gfx_text_fit(&font_small, cx + 32, 16, auth_ready() ? auth_login() : (auth_has_session() ? (auth_login()[0] ? auth_login() : "Cuenta") : "Entrar"), auth_ready() ? C_TEXT : C_DIM, cw - 38);
+        gfx_text_fit(&font_small, cx + 32, 16, alab, auth_ready() ? C_TEXT : C_DIM, cw - 38);
         if (ui_click(cx, 8, cw, 32)) act = TB_ACCOUNT;
     }
     if (ui_button(SCR_W-72, 10, 62, 28, NULL, IC_MENU, BS_NORMAL, 0)) act = TB_SETTINGS;
@@ -439,7 +444,7 @@ static void sidebar(void) {
     int i, y = TOP_H + 8, shown = 0;
     gfx_rect(0, TOP_H, SB_W, SCR_H - TOP_H, C_BG2);
     gfx_rect(SB_W - 1, TOP_H, 1, SCR_H - TOP_H, 0x000000);
-    text_bold(&font_small, 10, y, "RECOMENDADOS", C_FAINT);
+    text_bold(&font_small, 10, y, T("RECOMENDADOS"), C_FAINT);
     y += 22;
     for (i = 0; i < live.n && shown < 12 && y + 30 < SCR_H - 22; i++) {
         const kstream_t *s = &live.v[i];
@@ -456,8 +461,8 @@ static void sidebar(void) {
         if (ui_click(4, y, SB_W - 8, 30)) sb_pick = s->slug;
         y += 31; shown++;
     }
-    if (!shown) gfx_text(&font_small, 10, y, live_loaded ? "(sin canales)" : "Cargando...", C_FAINT);
-    gfx_text(&font_small, 10, SCR_H - 20, "No oficial \xc2\xb7 v" TV_VERSION, C_FAINT);
+    if (!shown) gfx_text(&font_small, 10, y, live_loaded ? T("(sin canales)") : T("Cargando..."), C_FAINT);
+    { char vb[64]; snprintf(vb, sizeof(vb), "%s%s", T("No oficial \xc2\xb7 v"), TV_VERSION); gfx_text(&font_small, 10, SCR_H - 20, vb, C_FAINT); }
 }
 
 /* ---------------------------------------------------------------- inicio: grilla */
@@ -476,11 +481,11 @@ static int draw_card(const kstream_t *s, int x, int y, int focus) {
     if (im) gfx_blit_scaled_round(im->px, im->w, im->h, tx, ty, CW, TH, 8);
     else placeholder(s, tx, ty, CW, TH, &font_big);
     live_pill(tx + 8, ty + 8);
-    viewers_pill(tx + 8, ty + TH - 25, s->viewers, " espectadores");
+    viewers_pill(tx + 8, ty + TH - 25, s->viewers, T(" espectadores"));
     if (s->mature) { gfx_rrect(tx + CW - 36, ty + 8, 28, 17, 4, C_LIVE, 255); gfx_text(&font_small, tx + CW - 31, ty + 9, "+18", 0xFFFFFF); }
     int my = y + TH + 8;
     avatar(s, s->avatar, x, my, 28, 0);
-    gfx_text_fit(&font_bold, x + 36, my - 2, s->title[0] ? s->title : "(sin t\xc3\xadtulo)", C_TEXT, CW - 38);
+    gfx_text_fit(&font_bold, x + 36, my - 2, s->title[0] ? s->title : T("(sin t\xc3\xadtulo)"), C_TEXT, CW - 38);
     gfx_text_fit(&font_small, x + 36, my + 16, s->name, C_DIM, CW - 38);
     if (s->cat[0]) chip(x + 36, my + 32, s->cat, 0, CW - 40);
     return ui_click(x, y, CW, CH);
@@ -491,7 +496,7 @@ static int draw_more(int x, int y, int focus) {
     gfx_rrect(x, y, CW, TH, 8, hov || focus ? C_PANEL2 : C_PANEL, 255);
     gfx_rframe(x, y, CW, TH, 8, focus ? 2 : 1, focus ? C_ACCENT : C_LINE, 255);
     gfx_icon(IC_DOWN, x + CW / 2, y + TH / 2 - 14, 22, C_ACCENT);
-    gfx_text_c(&font_bold, x + CW / 2, y + TH / 2 + 4, "Mostrar m\xc3\xa1s", C_TEXT);
+    gfx_text_c(&font_bold, x + CW / 2, y + TH / 2 + 4, T("Mostrar m\xc3\xa1s"), C_TEXT);
     return ui_click(x, y, CW, TH);
 }
 
@@ -510,20 +515,20 @@ static void draw_home(void) {
     gfx_clear(C_BG);
     /* encabezado de la seccion */
     gfx_circle(MX + 5, HDR_Y + 10, 5, C_ACCENT, 255);
-    text_bold(&font_bold, MX + 16, HDR_Y + 1, "Canales en vivo", C_TEXT);
-    int lx = MX + 16 + gfx_text_w(&font_bold, "Canales en vivo") + 14;
-    char lab[40]; snprintf(lab, sizeof(lab), "Idioma: %s", k_lang_names[k_lang]);
+    text_bold(&font_bold, MX + 16, HDR_Y + 1, T("Canales en vivo"), C_TEXT);
+    int lx = MX + 16 + gfx_text_w(&font_bold, T("Canales en vivo")) + 14;
+    char lab[40]; snprintf(lab, sizeof(lab), T("Idioma: %s"), k_lang_name(k_lang));
     int lw = chip(lx, HDR_Y, lab, 1, 0);
     if (ui_click(lx, HDR_Y, lw, 20)) h_act = HA_LANG;
-    if (ui_button(MX + MW - 92, HDR_Y - 2, 92, 24, "Actualizar", 0, BS_NORMAL, 0)) h_act = HA_REFRESH;
+    if (ui_button(MX + MW - 92, HDR_Y - 2, 92, 24, T("Actualizar"), 0, BS_NORMAL, 0)) h_act = HA_REFRESH;
     /* chips de categoria */
     int cx = MX;
     if(active_category.id) {
-        char label[160];snprintf(label,sizeof(label),"%s - %d directos cargados",active_category.name,live.n);
+        char label[160];snprintf(label,sizeof(label),T("%s - %d directos cargados"),active_category.name,live.n);
         gfx_text_fit(&font_small,MX,CHIP_Y,label,C_DIM,MW);
     }
     for (i = 0; !active_category.id && i <= ncats; i++) {
-        const char *t = i ? cats[i - 1] : "Todas";
+        const char *t = i ? cats[i - 1] : T("Todas");
         int w = gfx_text_w(&font_small, t) + 16;
         if (cx + w > MX + MW) break;
         chip(cx, CHIP_Y, t, cat_sel == i, 0);
@@ -552,7 +557,7 @@ static void draw_home(void) {
     }
     gfx_noclip();
     if (!nflt) {
-        const char *a = live_loaded ? (live_err[0] ? "No se pudo cargar la lista" : "No hay directos para este filtro") : "Cargando...";
+        const char *a = live_loaded ? (live_err[0] ? T("No se pudo cargar la lista") : T("No hay directos para este filtro")) : T("Cargando...");
         gfx_text_c(&font_bold, MX + MW / 2, GRID_Y + 110, a, C_DIM);
         if (live_err[0]) {
             char **ln; int n = ui_wrap(&font_small, live_err, MW - 40, &ln), k;
@@ -560,11 +565,11 @@ static void draw_home(void) {
             for (k = 0; k < n; k++) free(ln[k]);
             free(ln);
         }
-        if (nhidden) gfx_text_c(&font_small, MX + MW / 2, GRID_Y + 210, "(hay canales ocultos por el filtro +18/apuestas)", C_FAINT);
+        if (nhidden) gfx_text_c(&font_small, MX + MW / 2, GRID_Y + 210, T("(hay canales ocultos por el filtro +18/apuestas)"), C_FAINT);
     }
     if (maxs > 0) {
         int th = GRID_H * GRID_H / (content + 1), ty = GRID_Y + (GRID_H - th) * scroll / maxs;
-        (void)th; (void)ty;   /* rc15: sin barra de desplazamiento (en TVs 16:9 se veia como una linea verde al costado de la grilla) */
+        (void)th; (void)ty;   /* sin barra de desplazamiento (en TVs 16:9 se veia como una linea verde al costado de la grilla) */
         if (ui_hover(MX, SCR_H - 22, MW, 22) && scroll_t < maxs) scroll_t += 6;
         if (ui_hover(MX, GRID_Y - 4, MW, 14) && scroll_t > 0) scroll_t -= 6;
     }
@@ -573,7 +578,7 @@ static void draw_home(void) {
     if (tb) h_act = 100 + tb;
     if (k_last_mock && k_server_ok) {
         gfx_rrect(MX + 20, SCR_H - 30, MW - 40, 24, 6, C_WARN, 240);
-        gfx_text_fit(&font_small, MX + 30, SCR_H - 26, k_notice[0] ? k_notice : "DATOS DEMO (kick.com no respondi\xc3\xb3)", C_DARK, MW - 60);
+        gfx_text_fit(&font_small, MX + 30, SCR_H - 26, k_notice[0] ? k_notice : T("DATOS DEMO (kick.com no respondi\xc3\xb3)"), C_DARK, MW - 60);
     }
     ui_draw_toast(SCR_H - 34);
 }
@@ -589,7 +594,7 @@ static int valid_slug(const char *s) {
 static void draw_search(void) {
     int i, y0 = TOP_H + 50, rh = 50;
     gfx_clear(C_BG);
-    char t[96]; snprintf(t, sizeof(t), "Resultados para \"%s\"", search_q);
+    char t[96]; snprintf(t, sizeof(t), T("Resultados para \"%s\""), search_q);
     text_bold(&font_bold, MX, TOP_H + 12, t, C_TEXT);
     int extra = valid_slug(search_q) ? 1 : 0;
     int n = results.n + extra, vis = (SCR_H - y0 - 30) / rh;
@@ -604,23 +609,23 @@ static void draw_search(void) {
         if (extra && k == 0) {
             gfx_rrect(MX + 10, y + 6, 32, 32, 8, C_ACCENT, 255);
             gfx_icon(IC_PLAY, MX + 26, y + 22, 14, C_DARK);
-            char g[96]; snprintf(g, sizeof(g), "Ir directo a kick.com/%s", search_q);
+            char g[96]; snprintf(g, sizeof(g), T("Ir directo a kick.com/%s"), search_q);
             text_bold(&font_bold, MX + 54, y + 12, g, C_TEXT);
         } else {
             const kstream_t *s = &results.v[k - extra];
             avatar(s, s->avatar, MX + 8, y + 4, 36, s->live > 0);
             gfx_text_fit(&font_bold, MX + 54, y + 4, s->name, C_TEXT, MW - 170);
             if (s->verified) { int w = gfx_text_w(&font_bold, s->name); if (w < MW - 170) { gfx_circle(MX + 62 + w, y + 13, 7, C_ACCENT, 255); gfx_icon(IC_OK, MX + 62 + w, y + 13, 9, C_DARK); } }
-            char f[48], v[24]; fmt_count(s->followers, v, sizeof(v)); snprintf(f, sizeof(f), "%s seguidores", v);
+            char f[48], v[24]; fmt_count(s->followers, v, sizeof(v)); snprintf(f, sizeof(f), T("%s seguidores"), v);
             gfx_text(&font_small, MX + 54, y + 23, f, C_FAINT);
             if (s->live > 0) live_pill(MX + MW - 80, y + 13);
-            else chip(MX + MW - 80, y + 12, "Offline", 0, 0);
+            else chip(MX + MW - 80, y + 12, T("Offline"), 0, 0);
         }
         if (ui_click(MX, y, MW, rh - 6)) { s_act = 1; s_arg = k; }
         if (hov) rsel = k;
     }
-    if (!n) gfx_text_c(&font_bold, MX + MW / 2, y0 + 80, search_err[0] ? search_err : "Sin resultados", C_DIM);
-    gfx_text(&font_small, MX, SCR_H - 22, "A: abrir canal   B: volver   1: nueva b\xc3\xbasqueda", C_FAINT);
+    if (!n) gfx_text_c(&font_bold, MX + MW / 2, y0 + 80, search_err[0] ? search_err : T("Sin resultados"), C_DIM);
+    gfx_text(&font_small, MX, SCR_H - 22, T("A: abrir canal   B: volver   1: nueva b\xc3\xbasqueda"), C_FAINT);
     sidebar();
     int tb = topbar();
     if (tb) s_act = 100 + tb;
@@ -641,17 +646,21 @@ static void draw_recs(const char *slug,int x,int y,int w,int h,int clickable) {
 }
 static void draw_browse(void) {
     browse_sync();browse_edge_scroll();browse_visible();kc_status st;kc_status_get(&st);
-    gfx_clear(C_BG);text_bold(&font_title,MX,TOP_H+10,"Explorar categorias",C_TEXT);
+    gfx_clear(C_BG);text_bold(&font_title,MX,TOP_H+10,T("Explorar categorias"),C_TEXT);
     char label[180];
-    if(ui_button(MX,84,147,25,"Buscar categoria",0,BS_NORMAL,0))b_act=2;
-    kc_group groups[24];int ng=kc_groups(groups,24,k_show_mature);const char *gn="Todos los grupos";
+    kc_group groups[24];int ng=kc_groups(groups,24,k_show_mature);const char *gn=T("Todos los grupos");
     for(int i=0;i<ng;i++)if(groups[i].id==browse_group)gn=groups[i].name;
-    if(ui_button(MX+155,84,160,25,gn,0,BS_NORMAL,0))b_act=3;
-    if(ui_button(MX+323,84,110,25,"Actualizar",0,BS_NORMAL,0))b_act=4;
-    if(st.running)snprintf(label,sizeof(label),"Cargando: %d categorias / %d - pagina %d",st.count,st.total,st.pages);
-    else if(st.error[0]&&!st.limited)snprintf(label,sizeof(label),"Carga parcial: %d de %d. 2 / Actualizar: reintentar",st.count,st.total);
-    else if(st.limited)snprintf(label,sizeof(label),"%d de %d: limite Kick %d paginas - %d visibles",st.count,st.total,st.pages,browse_n);
-    else snprintf(label,sizeof(label),"%d disponibles - %d visibles - por espectadores",st.count,browse_n);
+    /* button widths follow the translated labels; the group button gives way if the row gets too long */
+    int bw1=gfx_text_w(&font_bold,T("Buscar categoria"))+18,bw3=gfx_text_w(&font_bold,T("Actualizar"))+18,bw2=gfx_text_w(&font_bold,gn)+18;
+    if(bw1<147)bw1=147; if(bw3<110)bw3=110; if(bw2<160)bw2=160;
+    if(bw1+bw2+bw3+16>MW){bw2=MW-bw1-bw3-16;if(bw2<100)bw2=100;}
+    if(ui_button(MX,84,bw1,25,T("Buscar categoria"),0,BS_NORMAL,0))b_act=2;
+    if(ui_button(MX+bw1+8,84,bw2,25,gn,0,BS_NORMAL,0))b_act=3;
+    if(ui_button(MX+bw1+bw2+16,84,bw3,25,T("Actualizar"),0,BS_NORMAL,0))b_act=4;
+    if(st.running)snprintf(label,sizeof(label),T("Cargando: %d categorias / %d - pagina %d"),st.count,st.total,st.pages);
+    else if(st.error[0]&&!st.limited)snprintf(label,sizeof(label),T("Carga parcial: %d de %d. 2 / Actualizar: reintentar"),st.count,st.total);
+    else if(st.limited)snprintf(label,sizeof(label),T("%d de %d: limite Kick %d paginas - %d visibles"),st.count,st.total,st.pages,browse_n);
+    else snprintf(label,sizeof(label),T("%d disponibles - %d visibles - por espectadores"),st.count,browse_n);
     gfx_text_fit(&font_small,MX,116,label,C_DIM,MW);
     int first=browse_top*BCOLS,last=first+BCOLS*2;
     for(int i=first;i<browse_n&&i<last;i++) {
@@ -662,26 +671,26 @@ static void draw_browse(void) {
         if(im)gfx_blit_scaled_round(im->px,im->w,im->h,x,y,BCW,BCW,4);
         else {gfx_rect(x,y,BCW,BCW,C_PANEL2);gfx_text_fit(&font_small,x+6,y+BCW/2,"KICK",C_DIM,BCW-12);}
         gfx_text_fit(&font_small,x,y+BCW+4,c.name,C_TEXT,BCW);
-        char count[24],line[64];fmt_count(c.viewers,count,sizeof(count));snprintf(line,sizeof(line),"%s espectadores",count);
+        char count[24],line[64];fmt_count(c.viewers,count,sizeof(count));snprintf(line,sizeof(line),T("%s espectadores"),count);
         gfx_text_fit(&font_small,x,y+BCW+21,line,C_DIM,BCW);
         if(ui_click(x,y,BCW,BCH-6)){bsel=i;b_act=1;}
     }
-    if(!browse_n)gfx_text_fit(&font_small,MX,175,st.running?"Buscando categorias publicas...":(st.error[0]&&!st.limited)?st.error:"Sin resultados. Cambia el grupo, la busqueda o el filtro +18.",C_DIM,MW);
-    /* rc15: sin barra de desplazamiento verde en Categorias */
-    snprintf(label,sizeof(label),"%d-%d de %d  A: canales  B: inicio  1: buscar  -: grupo arriba/abajo: mover",browse_n?first+1:0,last<browse_n?last:browse_n,browse_n);
+    if(!browse_n)gfx_text_fit(&font_small,MX,175,st.running?T("Buscando categorias publicas..."):(st.error[0]&&!st.limited)?st.error:T("Sin resultados. Cambia el grupo, la busqueda o el filtro +18."),C_DIM,MW);
+    /* sin barra de desplazamiento verde en Categorias */
+    snprintf(label,sizeof(label),T("%d-%d de %d  A: canales  B: inicio  1: buscar  -: grupo arriba/abajo: mover"),browse_n?first+1:0,last<browse_n?last:browse_n,browse_n);
     gfx_text_fit(&font_small,MX,456,label,C_FAINT,MW);
     sidebar();int tb=topbar();if(tb)b_act=100+tb;
 }
 static void browse_search(void) {
     char q[64];snprintf(q,sizeof(q),"%s",browse_query);
-    if(sui_text_input("Buscar categoria","Busca entre las categorias cargadas. Vacio: todas.",q,sizeof(q))) {
+    if(sui_text_input(T("Buscar categoria"),T("Busca entre las categorias cargadas. Vacio: todas."),q,sizeof(q))) {
         snprintf(browse_query,sizeof(browse_query),"%s",q);bsel=browse_top=0;browse_gen=-1;browse_sync();
     }
 }
 static void browse_groups_dialog(void) {
-    kc_group groups[24];int n=kc_groups(groups,24,k_show_mature),pick=0;char *labels[25];labels[0]="Todos los grupos";
+    kc_group groups[24];int n=kc_groups(groups,24,k_show_mature),pick=0;char *labels[25];labels[0]=T("Todos los grupos");
     for(int i=0;i<n;i++){labels[i+1]=groups[i].name;if(groups[i].id==browse_group)pick=i+1;}
-    u32 result=sui_list("Grupos de Kick","Grupos reales del catalogo publico. A: elegir B: volver",labels,n+1,&pick);
+    u32 result=sui_list(T("Grupos de Kick"),T("Grupos reales del catalogo publico. A: elegir B: volver"),labels,n+1,&pick);
     if(result&WPAD_BUTTON_A){browse_group=pick?groups[pick-1].id:0;bsel=browse_top=0;browse_gen=-1;browse_sync();}
 }
 static void browse_open(void) {
@@ -712,9 +721,9 @@ static void draw_channel(void) {
     int nw = gfx_text_w(&font_title, s->name) + 1;
     if (s->verified) { gfx_circle(nx + nw + 12, ny + 13, 8, C_ACCENT, 255); gfx_icon(IC_OK, nx + nw + 12, ny + 13, 10, C_DARK); nw += 24; }
     if (s->live > 0) live_pill(nx + nw + 8, ny + 6);
-    else chip(nx + nw + 8, ny + 4, "Offline", 0, 0);
+    else chip(nx + nw + 8, ny + 4, T("Offline"), 0, 0);
     fmt_count(s->followers, v, sizeof(v));
-    snprintf(line, sizeof(line), "%s seguidores%s", v, s->mock ? "   \xc2\xb7  [DEMO]" : "");
+    snprintf(line, sizeof(line), T("%s seguidores%s"), v, s->mock ? T("   \xc2\xb7  [DEMO]") : "");
     gfx_text(&font_small, nx, ny + 30, line, C_DIM);
     const kimg_t *ca=thumb_get(s->catart);
     if(ca)gfx_blit_scaled_round(ca->px,ca->w,ca->h,568,146,48,48,4);
@@ -728,18 +737,18 @@ static void draw_channel(void) {
         gfx_circle(PV_X + PV_W / 2, PV_Y + PV_H / 2, 30, C_ACCENT, 255);
         gfx_icon(IC_PLAY, PV_X + PV_W / 2 + 3, PV_Y + PV_H / 2, 26, C_DARK);
         live_pill(PV_X + 8, PV_Y + 8);
-        viewers_pill(PV_X + 8, PV_Y + PV_H - 25, s->viewers, " espectadores");
+        viewers_pill(PV_X + 8, PV_Y + PV_H - 25, s->viewers, T(" espectadores"));
         if (ui_click(PV_X, PV_Y, PV_W, PV_H)) c_act = 1;
     } else {
         gfx_rect_a(PV_X, PV_Y, PV_W, PV_H, 0x000000, 150);
-        gfx_text_c(&font_bold, PV_X + PV_W / 2, PV_Y + PV_H / 2 - 9, "Sin transmisi\xc3\xb3n ahora", C_DIM);
+        gfx_text_c(&font_bold, PV_X + PV_W / 2, PV_Y + PV_H / 2 - 9, T("Sin transmisi\xc3\xb3n ahora"), C_DIM);
     }
     /* informacion */
     int ix = PV_X + PV_W + 16, iw = SCR_W - ix - 16, iy = PV_Y;
     gfx_rrect(ix, iy, iw, PV_H, 10, C_PANEL, 255);
     gfx_rframe(ix, iy, iw, PV_H, 10, 1, C_LINE, 255);
     {
-        char **ln; int n = ui_wrap(&font_bold, s->live > 0 ? (s->title[0] ? s->title : "(sin t\xc3\xadtulo)") : (chan_err[0] ? chan_err : "El canal no est\xc3\xa1 en vivo."), iw - 24, &ln), k;
+        char **ln; int n = ui_wrap(&font_bold, s->live > 0 ? (s->title[0] ? s->title : T("(sin t\xc3\xadtulo)")) : (chan_err[0] ? chan_err : T("El canal no est\xc3\xa1 en vivo.")), iw - 24, &ln), k;
         for (k = 0; k < n && k < 2; k++) text_bold(&font_bold, ix + 12, iy + 10 + k * 19, ln[k], C_TEXT);
         int yy = iy + 14 + (n < 2 ? n : 2) * 19;
         for (k = 0; k < n; k++) free(ln[k]);
@@ -753,7 +762,7 @@ static void draw_channel(void) {
             char since[40]; fmt_since(s->start, since, sizeof(since));
             fmt_count(s->viewers, v, sizeof(v));
             gfx_circle(ix + 16, yy + 8, 4, C_LIVE, 255);
-            snprintf(line, sizeof(line), "%s espectadores%s%s", v, since[0] ? "  \xc2\xb7  " : "", since);
+            snprintf(line, sizeof(line), T("%s espectadores%s%s"), v, since[0] ? "  \xc2\xb7  " : "", since);
             gfx_text_fit(&font_small, ix + 26, yy, line, C_DIM, iw - 36);
             yy += 20;
         }
@@ -765,15 +774,15 @@ static void draw_channel(void) {
         }
     }
     if(ui_button(ix+10,PV_Y+PV_H-64,152,24,social_label(s->slug),IC_HEART,BS_ACCENT,chan_focus==3&&!in_ptr.valid))c_act=6;
-    if(ui_button(ix+170,PV_Y+PV_H-64,152,24,"Suscribirse",0,BS_NORMAL,chan_focus==4&&!in_ptr.valid))c_act=7;
+    if(ui_button(ix+170,PV_Y+PV_H-64,152,24,T("Suscribirse"),0,BS_NORMAL,chan_focus==4&&!in_ptr.valid))c_act=7;
     /* Compact controls leave room for real live thumbnails below the player. */
     int by=PV_Y+PV_H-34;
-    if(s->live>0&&ui_button(ix+10,by,90,28,"Ver vivo",IC_PLAY,BS_ACCENT,chan_focus==0&&!in_ptr.valid))c_act=1;
-    if(ui_button(ix+108,by,110,28,k_server[0]?"Modo":"Directo",0,BS_NORMAL,chan_focus==1&&!in_ptr.valid))c_act=2;
-    if(ui_button(ix+226,by,96,28,"Volver",IC_BACK,BS_NORMAL,chan_focus==2&&!in_ptr.valid))c_act=3;
-    gfx_text(&font_small,PV_X,370,"Otros directos (no son VODs)",C_DIM);
+    if(s->live>0&&ui_button(ix+10,by,90,28,T("Ver vivo"),IC_PLAY,BS_ACCENT,chan_focus==0&&!in_ptr.valid))c_act=1;
+    if(ui_button(ix+108,by,110,28,k_server[0]?T("Modo"):T("Directo"),0,BS_NORMAL,chan_focus==1&&!in_ptr.valid))c_act=2;
+    if(ui_button(ix+226,by,96,28,T("Volver"),IC_BACK,BS_NORMAL,chan_focus==2&&!in_ptr.valid))c_act=3;
+    gfx_text(&font_small,PV_X,370,T("Otros directos (no son VODs)"),C_DIM);
     draw_recs(s->slug,PV_X,390,SCR_W-32,56,1);
-    gfx_text_fit(&font_small,PV_X,SCR_H-16,"A: ver   B: volver   2: actualizar   +: categorias",C_FAINT,SCR_W-32);
+    gfx_text_fit(&font_small,PV_X,SCR_H-16,T("A: ver   B: volver   2: actualizar   +: categorias"),C_FAINT,SCR_W-32);
     int tb = topbar();
     if (tb) c_act = 100 + tb;
     ui_draw_toast(SCR_H - 30);
@@ -806,12 +815,12 @@ static void draw_osd(void) {
     gfx_circle(SCR_W - 96, 19, 4, C_LIVE, 255);
     gfx_text(&font_small, SCR_W - 88, 11, v, C_TEXT);
     wordmark(SCR_W - 104, 26);
-    if (tp_state() == TP_ERROR) snprintf(s, sizeof(s), "Se cort\xc3\xb3: %s", tp_error());
-    else snprintf(s, sizeof(s), "%s \xc2\xb7 %s \xc2\xb7 %.0f fps \xc2\xb7 vol %d%%", tp_status(), k_server[0] ? pm_names[k_play_mode] : tp_mode_text(), tp_fps(), tp_volume() * 100 / 255);
+    if (tp_state() == TP_ERROR) snprintf(s, sizeof(s), T("Se cort\xc3\xb3: %s"), tp_error());
+    else snprintf(s, sizeof(s), T("%s \xc2\xb7 %s \xc2\xb7 %.0f fps \xc2\xb7 vol %d%%"), tp_status(), k_server[0] ? pm_name(k_play_mode) : tp_mode_text(), tp_fps(), tp_volume() * 100 / 255);
     gfx_text_fit(&font_bold, 16, OSD_BOT + 8, s, C_TEXT, SCR_W-40);
-    gfx_text_fit(&font_small, 16, OSD_BOT + 30, "B: volver  +: pantalla  1: escribir  -: seguir  2: suscribir", C_FAINT, SCR_W-310);
+    gfx_text_fit(&font_small, 16, OSD_BOT + 30, T("B: volver  +: pantalla  1: escribir  -: seguir  2: suscribir"), C_FAINT, SCR_W-310);
     if(ui_button(SCR_W-280,OSD_BOT+26,132,24,social_label(pinfo.slug),IC_HEART,BS_ACCENT,0))watch_social_pressed=1;
-    if(ui_button(SCR_W-140,OSD_BOT+26,132,24,"Suscribirse",0,BS_NORMAL,0))watch_social_pressed=2;
+    if(ui_button(SCR_W-140,OSD_BOT+26,132,24,T("Suscribirse"),0,BS_NORMAL,0))watch_social_pressed=2;
     ui_draw_toast(OSD_BOT - 6);
 }
 
@@ -820,18 +829,18 @@ static void draw_osd(void) {
 static void draw_chat_panel(void) {
     static tchat_t msgs[24];
     int n = chat_get(msgs, 24), i, k;
-    chat_anim_begin();   /* rc14: la lista de emotes animados se arma de nuevo */
+    chat_anim_begin();   /* la lista de emotes animados se arma de nuevo */
     gfx_rect(CHAT_X, 0, CHAT_W, SCR_H, C_BG2);
     gfx_rect(CHAT_X, 0, 1, SCR_H, 0x000000);
-    text_bold(&font_small, CHAT_X + 10, 10, "CHAT DEL DIRECTO", C_TEXT);
+    text_bold(&font_small, CHAT_X + 10, 10, T("CHAT DEL DIRECTO"), C_TEXT);
     gfx_rect(CHAT_X, 34, CHAT_W, 1, C_LINE);
-    int y = SCR_H - 106;   /* rc16: el chat baja hasta los 3 botones que quedan */
+    int y = SCR_H - 106;   /* el chat baja hasta los 3 botones que quedan */
     const char *me = auth_ready() ? auth_login() : "";
     char at_me[72]; snprintf(at_me, sizeof(at_me), "@%s", me);
     for (i = n - 1; i >= 0 && y > 40; i--) {
         char buf[260];
         int nl_name = strlen(msgs[i].name);
-        int rich = !msgs[i].sys && msgs[i].ne;   /* rc13: emotes como imagenes */
+        int rich = !msgs[i].sys && msgs[i].ne;   /* emotes como imagenes */
         if (msgs[i].sys) snprintf(buf, sizeof(buf), "%s", msgs[i].text);
         else snprintf(buf, sizeof(buf), "%s: %s", msgs[i].name, msgs[i].text);
         char **ln = NULL; int nl = 0;
@@ -861,13 +870,13 @@ static void draw_chat_panel(void) {
         free(ln);
     }
     if (!n) {
-        char **ln;int nn=ui_wrap(&font_small,chat_status()[0]?chat_status():"Esperando mensajes...",CHAT_W-20,&ln);
+        char **ln;int nn=ui_wrap(&font_small,chat_status()[0]?chat_status():T("Esperando mensajes..."),CHAT_W-20,&ln);
         for(i=0;i<nn;i++){gfx_text(&font_small,CHAT_X+10,190+i*16,ln[i],C_FAINT);free(ln[i]);}free(ln);
     }
-    /* rc16: sin boton "Responder / moderar"; rc17: sin "abajo:responder" en la ayuda ni el atajo abajo (pedido de Tobias) */
+    /* sin boton "Responder / moderar"; sin "abajo:responder" en la ayuda ni el atajo abajo (pedido de Tobias) */
     if(ui_button(CHAT_X+8,SCR_H-98,CHAT_W-16,26,social_label(pinfo.slug),IC_HEART,BS_ACCENT,0))watch_social_pressed=1;
-    if(ui_button(CHAT_X+8,SCR_H-66,CHAT_W-16,26,"Suscribirse",0,BS_NORMAL,0))watch_social_pressed=2;
-    if(ui_button(CHAT_X+8,SCR_H-34,CHAT_W-16,26,"Escribir",IC_CHAT,BS_ACCENT,0))chat_write_pressed=1;
+    if(ui_button(CHAT_X+8,SCR_H-66,CHAT_W-16,26,T("Suscribirse"),0,BS_NORMAL,0))watch_social_pressed=2;
+    if(ui_button(CHAT_X+8,SCR_H-34,CHAT_W-16,26,T("Escribir"),IC_CHAT,BS_ACCENT,0))chat_write_pressed=1;
 }
 static int fs_osd_was = -1,fs_details_was=-1,last_chat_gen=-1;
 static u64 fs_last_osd = 0, fs_last_full = 0;
@@ -893,21 +902,21 @@ static int watch_frame(int input) {
             avatar(&pinfo,pinfo.avatar,12,vh+10,36,1);
             gfx_text_fit(&font_bold,60,vh+8,pinfo.name,C_TEXT,CHAT_X-74);
             gfx_text_fit(&font_small,60,vh+30,pinfo.title,C_DIM,CHAT_X-74);
-            char st[180];snprintf(st,sizeof(st),"%s / %.0f fps / vol %d%%",tp_status(),tp_fps(),tp_volume()*100/255);
+            char st[180];snprintf(st,sizeof(st),T("%s / %.0f fps / vol %d%%"),tp_status(),tp_fps(),tp_volume()*100/255);
             if(!wide)gfx_text_fit(&font_small,12,vh+62,st,C_DIM,CHAT_X-24);
-            /* rc8: sin botones extra en la columna del video (ya estan en el chat).
+            /* sin botones extra en la columna del video (ya estan en el chat).
                Se recupera el espacio de las recomendaciones; el hint corto queda entero. */
             {
                 int sy = vh + (wide ? 66 : 108);
-                if (!wide) gfx_text(&font_small, 12, sy - 20, "Otros directos", C_DIM);
+                if (!wide) gfx_text(&font_small, 12, sy - 20, T("Otros directos"), C_DIM);
                 draw_recs(pinfo.slug, 12, sy, CHAT_X - 24, wide ? 32 : 56, 0);
                 gfx_text_fit(&font_small, 12, SCR_H - 16,
-                    "B:canal  +/-:vol  +:full  1:escribir  -:seguir  2:suscribir",
+                    T("B:canal  +/-:vol  +:full  1:escribir  -:seguir  2:suscribir"),
                     C_FAINT, CHAT_X - 24);
             }
             gfx_ui_cache_rows(0,SCR_H);fs_last_osd=now;
         }
-        /* rc14: emotes animados: sólo sus filas, sin redibujar el panel (<=12,5 cuadros/s) */
+        /* emotes animados: sólo sus filas, sin redibujar el panel (<=12,5 cuadros/s) */
         int anim=!dirty&&chat_anim_tick()>0;
         int newpic=has&&(pic!=fs_last_pic||pic->pts!=fs_last_pts);
         if(!newpic&&!dirty&&!anim)return 0;
@@ -915,7 +924,7 @@ static int watch_frame(int input) {
         memset(rowsrc,1,sizeof(rowsrc));gfx_composite(has?pic:NULL,0,0,vw,vh,rowsrc);return 1;
     }
     int vw = SCR_W, vh = wide ? SCR_H : 360, vy = (SCR_H - vh) / 2;
-    chat_anim_reset();   /* rc14: chat oculto: nada que animar */
+    chat_anim_reset();   /* chat oculto: nada que animar */
     int osd = ticks_to_millisecs(gettime() - osd_t) < 5000 || tp_state() != TP_PLAYING;
     u64 now = gettime();
     if (!pic || !tp_has_video()) {
@@ -925,7 +934,7 @@ static int watch_frame(int input) {
         const kimg_t *th = thumb_get(pinfo.thumb);
         if (th) { gfx_blit_scaled(th->px, th->w, th->h, 0, 60, SCR_W, 360); gfx_rect_a(0, 60, SCR_W, 360, 0, 150); }
         if (tp_state() == TP_PLAYING && !tp_has_video()) {
-            gfx_text_c(&font_bold, SCR_W / 2, 230, "Solo audio", C_DIM);
+            gfx_text_c(&font_bold, SCR_W / 2, 230, T("Solo audio"), C_DIM);
             draw_vu(SCR_W / 2 - 120, 260, 240, 14);
         } else if (tp_state() != TP_ERROR) {
             ui_spinner(SCR_W / 2, 230, 18);
@@ -957,43 +966,54 @@ static int watch_frame(int input) {
 }
 
 /* ---------------------------------------------------------------- ajustes */
-static const char *help_text =
-    "CONTROLES\n"
-    "Puntero + A: elegir tarjeta, chip o bot\xc3\xb3n.  Cruceta: moverse por la grilla.\n"
-    "1: buscar (teclado en pantalla).  2: actualizar.  -: cambiar idioma.  B: ajustes / volver.\n"
-    "Viendo un directo: B vuelve al canal, Izq/Der volumen, A muestra la barra, + cambia pantalla completa/chat, -: seguir, 2: suscribirse.  HOME: salir.\n"
-    "Tambi\xc3\xa9n sirven el Classic Controller, el mando de GameCube y un teclado USB.\n\n"
-    "EXPLORAR CATEGORIAS\n"
-    "+ o Cat.: catalogo de Kick. Cruceta: scroll; A: directos de esa categoria. 1: buscar entre las categorias cargadas; -: grupos reales; 2: actualizar.\n"
-    "Las portadas se cargan solo al verlas. El proveedor limita la cantidad de paginas: la barra informa el total disponible y cualquier carga parcial.\n\n"
-    "SERVIDOR COMPANION (recomendado)\n"
-    "En una PC de tu misma red corr\xc3\xa9: python3 kickwii_server.py  y pon\xc3\xa9 su IP en Ajustes > Servidor "
-    "(se guarda en sd:/apps/KickWii/server.txt). Con el servidor ten\xc3\xa9s miniaturas, avatares, "
-    "video por HTTP sin TLS (Proxy 360p) o transcodificado a 270p con ffmpeg.\n\n"
-    "SIN SERVIDOR\n"
-    "La Wii descarga miniaturas, avatares, categorias y banners por HTTPS. Video hasta 360p; chat publico WSS de solo lectura, sin listado VOD. "
-    "Tolera minutos de diferencia del reloj; conserva la fecha aproximada correcta.\n\n"
-    "FILTRO\n"
-    "Por defecto se ocultan los canales +18 y las categor\xc3\xad" "as de apuestas/casino.";
-
-static const char *about_text =
-    "KickWii " TV_VERSION " - cliente NO OFICIAL de kick.com hecho por fans.\n\n"
-    "NO est\xc3\xa1 afiliado, autorizado ni respaldado por Kick (Kick Streaming Pty Ltd) ni por Nintendo. "
-    "\"Kick\" es marca de sus due\xc3\xb1os y se usa solo para decir con qu\xc3\xa9 servicio funciona. "
-    "El \xc3\xad" "cono es arte propio.\n\n"
-    "Solo muestra transmisiones en vivo p\xc3\xba" "blicas y gratuitas, igual que kick.com sin iniciar sesi\xc3\xb3n. "
-    "Tiene login OAuth opcional para escribir; no accede a contenido pago. Los contenidos pertenecen a sus creadores.\n\n"
-    "M\xc3\xbasica de la intro: \"Clair de lune\" (Suite bergamasque) de Claude Debussy, piano: Laurens Goedhart (2011), "
-    "dominio p\xc3\xbablico (Public Domain Mark), v\xc3\xad" "a Wikimedia Commons. Recortada a 45 s y comprimida.\n\n"
-    "Software: FFmpeg/libavcodec/libavformat (LGPL 2.1), libcurl, mbedTLS, zlib, libogc, fuente DejaVu Sans. "
-    "Imagen de carga (intro y banner del canal): la eligi\xc3\xb3 el usuario (wordmark KICK pixelado sobre negro).";
+/* Help and About are translated paragraph by paragraph (i18n.c: tr_join). */
+static const char *const help_parts[] = {
+    "CONTROLES\n",
+    "Puntero + A: elegir tarjeta, chip o bot\xc3\xb3n.  Cruceta: moverse por la grilla.\n",
+    "1: buscar (teclado en pantalla).  2: actualizar.  -: cambiar idioma.  B: ajustes / volver.\n",
+    "Viendo un directo: B vuelve al canal, Izq/Der volumen, A muestra la barra, + cambia pantalla completa/chat, -: seguir, 2: suscribirse.  HOME: salir.\n",
+    "Tambi\xc3\xa9n sirven el Classic Controller, el mando de GameCube y un teclado USB.\n\n",
+    "EXPLORAR CATEGORIAS\n",
+    "+ o Cat.: catalogo de Kick. Cruceta: scroll; A: directos de esa categoria. 1: buscar entre las categorias cargadas; -: grupos reales; 2: actualizar.\n",
+    "Las portadas se cargan solo al verlas. El proveedor limita la cantidad de paginas: la barra informa el total disponible y cualquier carga parcial.\n\n",
+    "IDIOMA\n",
+    "Ajustes > Idioma de la interfaz (Language). Se elige solo seg\xc3\xban el idioma de la consola y se guarda en la SD/USB.\n\n",
+    "SERVIDOR COMPANION (recomendado)\n",
+    "En una PC de tu misma red corr\xc3\xa9: python3 kickwii_server.py  y pon\xc3\xa9 su IP en Ajustes > Servidor ",
+    "(se guarda en sd:/apps/KickWii/server.txt). Con el servidor ten\xc3\xa9s miniaturas, avatares, ",
+    "video por HTTP sin TLS (Proxy 360p) o transcodificado a 270p con ffmpeg.\n\n",
+    "SIN SERVIDOR\n",
+    "La Wii descarga miniaturas, avatares, categorias y banners por HTTPS. Video hasta 360p; chat publico WSS de solo lectura, sin listado VOD. ",
+    "Tolera minutos de diferencia del reloj; conserva la fecha aproximada correcta.\n\n",
+    "FILTRO\n",
+    "Por defecto se ocultan los canales +18 y las categor\xc3\xad" "as de apuestas/casino.",
+    NULL };
+static const char *const about_parts[] = {
+    " - cliente NO OFICIAL de kick.com hecho por fans.\n\n",
+    "NO est\xc3\xa1 afiliado, autorizado ni respaldado por Kick (Kick Streaming Pty Ltd) ni por Nintendo. ",
+    "\"Kick\" es marca de sus due\xc3\xb1os y se usa solo para decir con qu\xc3\xa9 servicio funciona. ",
+    "El \xc3\xad" "cono es arte propio.\n\n",
+    "Solo muestra transmisiones en vivo p\xc3\xba" "blicas y gratuitas, igual que kick.com sin iniciar sesi\xc3\xb3n. ",
+    "Tiene login OAuth opcional para escribir; no accede a contenido pago. Los contenidos pertenecen a sus creadores.\n\n",
+    "M\xc3\xbasica de la intro: \"Clair de lune\" (Suite bergamasque) de Claude Debussy, piano: Laurens Goedhart (2011), ",
+    "dominio p\xc3\xba" "blico (Public Domain Mark), v\xc3\xad" "a Wikimedia Commons. Recortada a 45 s y comprimida.\n\n",
+    "Software: FFmpeg/libavcodec/libavformat (LGPL 2.1), libcurl, mbedTLS, zlib, libogc, fuente DejaVu Sans, fuente Noto Sans CJK (subconjunto, SIL OFL 1.1). ",
+    "Imagen de carga (intro y banner del canal): la eligi\xc3\xb3 el usuario (wordmark KICK pixelado sobre negro).",
+    NULL };
+static char help_buf[6144], about_buf[4096];
+static const char *help_text(void) { tr_join(help_buf, sizeof(help_buf), help_parts); return help_buf; }
+static const char *about_text(void) {
+    int n = snprintf(about_buf, sizeof(about_buf), "KickWii " TV_VERSION);
+    tr_join(about_buf + n, sizeof(about_buf) - n, about_parts);
+    return about_buf;
+}
 
 static void edit_server(void) {
     char b[80];
     const char *s = k_server;
     if (!strncmp(s, "http://", 7)) s += 7;
     snprintf(b, sizeof(b), "%s", s);
-    if (!sui_text_input("Servidor companion", "IP de la PC con kickwii_server.py, ej: 192.168.0.10 8787 (espacio = ':'). Vac\xc3\xad" "o = directo a kick.com", b, sizeof(b) - 1)) return;
+    if (!sui_text_input(T("Servidor companion"), T("IP de la PC con kickwii_server.py, ej: 192.168.0.10 8787 (espacio = ':'). Vac\xc3\xad" "o = directo a kick.com"), b, sizeof(b) - 1)) return;
     char *p = b; while (*p == ' ') p++;
     int n = strlen(p); while (n && p[n - 1] == ' ') p[--n] = 0;
     char *sp = strchr(p, ' '); if (sp) { *sp = ':'; }
@@ -1006,49 +1026,68 @@ static void edit_server(void) {
 }
 
 
-static const char *display_title(void) {
-    return k_lang==2?"Screen type":k_lang==3?"Tipo de tela":"Tipo de pantalla";
-}
+static const char *display_title(void) { return T("Tipo de pantalla"); }
 static const char *display_choice(int mode) {
-    static const char *es[]={"Automático (según la Wii)","4:3 (pantalla cuadrada)","16:9 (pantalla plana/panorámica)"};
-    static const char *en[]={"Automatic (Wii setting)","4:3 (square screen)","16:9 (flat/widescreen)"};
-    static const char *pt[]={"Automático (conforme o Wii)","4:3 (tela quadrada)","16:9 (tela plana/panorâmica)"};
-    if(mode<0||mode>2)mode=0;
-    return k_lang==2?en[mode]:k_lang==3?pt[mode]:es[mode];
+    static const char *const c[] = { "Autom\xc3\xa1tico (seg\xc3\xban la Wii)", "4:3 (pantalla cuadrada)", "16:9 (pantalla plana/panor\xc3\xa1mica)" };
+    if (mode < 0 || mode > 2) mode = 0;
+    return T(c[mode]);
 }
 static void display_settings(void) {
     int choice=gfx_aspect_mode();
     char *items[3]={(char *)display_choice(0),(char *)display_choice(1),(char *)display_choice(2)};
-    u32 r=sui_list(display_title(),k_lang==2?"A: apply   B: back":k_lang==3?"A: aplicar   B: voltar":"A: aplicar   B: volver",items,3,&choice);
+    u32 r=sui_list(display_title(),T("A: aplicar   B: volver"),items,3,&choice);
     if(r==WPAD_BUTTON_HOME){quit=1;return;}
     if(r!=WPAD_BUTTON_A)return;
     gfx_set_aspect(choice);cfg_save();
     sel=scroll=scroll_t=bsel=0;
 }
 
+/* Interface language selector: each language is shown in its own language. */
+static void language_settings(void) {
+    char *items[LANG_COUNT];
+    int choice = ui_lang, i;
+    for (i = 0; i < LANG_COUNT; i++) items[i] = (char *)lang_native_name(i);
+    u32 r = sui_list(T("Idioma de la interfaz"), T("A: aplicar   B: volver"), items, LANG_COUNT, &choice);
+    if (r == WPAD_BUTTON_HOME) { quit = 1; return; }
+    if (r != WPAD_BUTTON_A) return;
+    if (choice != ui_lang) {
+        char b[32];
+        i18n_set(choice);
+        ui_lang_explicit = 1;
+        if (!sh_cfg_read("idioma.txt", b, sizeof(b))) k_lang_default_from_ui();   /* stream filter follows until the user picks one */
+        cfg_save();
+        thumbs_flush();
+        sel = scroll = scroll_t = bsel = rsel = rscroll = 0;
+        if (screen == SCR_HOME) load_live(1);
+    }
+}
+
 static void settings(void) {
     int sel_i = 0;
     while (!quit) {
-        char it[10][160];
-        char *items[10];
+        char it[11][160];
+        char *items[11];
         int i;
-        snprintf(it[0], 160, "Servidor companion\n%s", k_server[0] ? k_server : "ninguno: miniaturas directas (si Kick permite)");
-        snprintf(it[1], 160, "Modo de video\n%s", k_server[0] ? pm_names[k_play_mode] : "Directo (sin servidor, 360p HTTPS)");
-        snprintf(it[2], 160, "Idioma de la lista\n%s", k_lang_names[k_lang]);
-        snprintf(it[3], 160, "Filtro +18 / apuestas\n%s", k_show_mature ? "Desactivado (se muestra todo)" : "Activado (recomendado)");
-        snprintf(it[4], 160, "Probar conexi\xc3\xb3n\n%s", !k_server[0] ? "modo directo" : (k_server_ok ? "\xc3\xbaltima prueba: OK" : "\xc3\xbaltima prueba: sin respuesta"));
-        snprintf(it[5], 160, "Ayuda");
-        snprintf(it[6], 160, "Acerca de (no oficial)");
-        snprintf(it[7], 160, "Salir al Homebrew Channel");
+        snprintf(it[0], 160, T("Servidor companion\n%s"), k_server[0] ? k_server : T("ninguno: miniaturas directas (si Kick permite)"));
+        snprintf(it[1], 160, T("Modo de video\n%s"), k_server[0] ? pm_name(k_play_mode) : T("Directo (sin servidor, 360p HTTPS)"));
+        snprintf(it[2], 160, T("Idioma de la lista\n%s"), k_lang_name(k_lang));
+        snprintf(it[3], 160, T("Filtro +18 / apuestas\n%s"), k_show_mature ? T("Desactivado (se muestra todo)") : T("Activado (recomendado)"));
+        snprintf(it[4], 160, T("Probar conexi\xc3\xb3n\n%s"), !k_server[0] ? T("modo directo") : (k_server_ok ? T("\xc3\xbaltima prueba: OK") : T("\xc3\xbaltima prueba: sin respuesta")));
+        snprintf(it[5], 160, T("Ayuda"));
+        snprintf(it[6], 160, T("Acerca de (no oficial)"));
+        snprintf(it[7], 160, T("Salir al Homebrew Channel"));
         snprintf(it[8], 160, "%s\n%s", display_title(), display_choice(gfx_aspect_mode()));
-        snprintf(it[9],160,"Cuenta / Iniciar sesion\n%s",auth_status());
-        items[9]=it[9];
-        items[0]=it[8];
-        for (i=0;i<8;i++)items[i+1]=it[i];
-        u32 r = sui_list("Ajustes", "A: elegir   B: volver", items, 10, &sel_i);
+        snprintf(it[9],160,T("Cuenta / Iniciar sesi\xc3\xb3n\n%s"),auth_status());
+        snprintf(it[10],160,"%s\n%s",T("Idioma de la interfaz"),lang_native_name(ui_lang));
+        items[0]=it[10];
+        items[1]=it[8];
+        for (i=0;i<8;i++)items[i+2]=it[i];
+        items[10]=it[9];
+        u32 r = sui_list(T("Ajustes"), T("A: elegir   B: volver"), items, 11, &sel_i);
         if (r == WPAD_BUTTON_HOME) { quit = 1; return; }
         if (r != WPAD_BUTTON_A) return;
-        switch (sel_i==9?9:sel_i==0?8:sel_i-1) {
+        switch (sel_i==0?10:sel_i==10?9:sel_i==1?8:sel_i-2) {
+        case 10: language_settings(); break;
         case 9: chat_stop();if(auth_has_session())account_screen();else{auth_screen();if(auth_ready())account_screen();}thumbs_pause(0);break;
         case 8: display_settings(); break;
         case 0: edit_server(); break;
@@ -1056,14 +1095,14 @@ static void settings(void) {
         case 2: next_language(); load_live(1); break;
         case 3:
             if (!k_show_mature) {
-                if (!sui_confirm("Filtro", "\xc2\xbfMostrar canales +18 y de apuestas/casino? Solo para adultos.")) break;
+                if (!sui_confirm(T("Filtro"), T("\xc2\xbfMostrar canales +18 y de apuestas/casino? Solo para adultos."))) break;
                 k_show_mature = 1;
             } else k_show_mature = 0;
             cat_sel = sel = scroll = scroll_t = 0;
             cfg_save(); rebuild_filter(); break;
-        case 4: check_server(); if (k_server_ok) ui_toast("Servidor OK"); break;
-        case 5: sui_text_view("Ayuda", "A/B: volver", help_text); break;
-        case 6: sui_text_view("Acerca de", "A/B: volver", about_text); break;
+        case 4: check_server(); if (k_server_ok) ui_toast(T("Servidor OK")); break;
+        case 5: sui_text_view(T("Ayuda"), T("A/B: volver"), help_text()); break;
+        case 6: sui_text_view(T("Acerca de"), T("A/B: volver"), about_text()); break;
         case 7: quit = 1; return;
         }
     }
@@ -1076,7 +1115,7 @@ static int at_step = 0;
 static int at_ms(void) { return (int)ticks_to_millisecs(gettime() - at_ts); }
 static void at_stats(void) {
     static u64 last = 0;
-    {   /* rc14/rc8: memoria cada 10 s (mallinfo + arenas + imagenes/animaciones) */
+    {   /* memoria cada 10 s (mallinfo + arenas + imagenes/animaciones) */
         static u64 mlast = 0; static int pc0 = 0; static unsigned r0 = 0, t0a = 0;
         if (atlog && (!mlast || ticks_to_millisecs(gettime() - mlast) >= 10000)) {
             char mm[300]; unsigned rr, tt; thumbs_mem(mm, sizeof mm); chat_anim_stats(&rr, &tt);
@@ -1135,7 +1174,7 @@ u32 at_hook(void) {
     case 2: if(at_ms()>15000){at_next();quit=1;}break;
     }
 #elif defined(AUTOTEST_PICKER)
-    /* rc14: selector de emotes en el teclado del chat; el envio es SEND_DRYRUN (no sale nada) */
+    /* selector de emotes en el teclado del chat; el envio es SEND_DRYRUN (no sale nada) */
     switch(at_step){
     case 0: if(at_wait(SCR_HOME,8000)){at_next();open_channel(NULL,AT_CHAN);}break;
     case 1: if(at_wait(SCR_CHAN,6000)){at_next();start_watch();}break;
@@ -1159,28 +1198,28 @@ u32 at_hook(void) {
     case 19: if(at_ms()>5000){at_next();LOG("picker end status=%s",auth_status());quit=1;}break;
     }
 #elif defined(AUTOTEST_RC16)
-    /* rc16: panel del chat sin "Responder / moderar" + pruebas del vigilante (GUARD_TEST) */
+    /* panel del chat sin "Responder / moderar" + pruebas del vigilante (GUARD_TEST) */
     switch(at_step){
     case 0: if(at_wait(SCR_HOME,8000)){at_next();open_channel(NULL,AT_CHAN);}break;
     case 1: if(at_wait(SCR_CHAN,6000)){at_next();start_watch();}break;
-    case 2: if(at_wait(SCR_WATCH,40000)){at_next();LOG("rc16: shot panel (t=%.0f) chat=%s",ticks_to_millisecs(gettime()-t_start)/1000.0,chat_status());}break;
+    case 2: if(at_wait(SCR_WATCH,40000)){at_next();LOG("shot panel (t=%.0f) chat=%s",ticks_to_millisecs(gettime()-t_start)/1000.0,chat_status());}break;
 #ifdef GUARD_TEST_CHAT
-    case 3: if(at_ms()>5000){at_next();LOG("rc16: hilo del chat -> recv bloqueante (simula socket de IOS colgado)");
+    case 3: if(at_ms()>5000){at_next();LOG("hilo del chat -> recv bloqueante (simula socket de IOS colgado)");
 #ifndef CHAT_NOSTUCK
 chat_test_stuck();
 #endif
 }break;
-    case 4: if(at_ms()>4000){at_next();u64 t0=gettime();LOG("rc16: chat_stop() desde el hilo principal...");chat_stop();LOG("rc16: chat_stop() volvio en %u ms",(unsigned)ticks_to_millisecs(gettime()-t0));}break;
-    case 5: if(at_ms()>3000){at_next();LOG("rc16: chat_start()");chat_start(&pinfo);}break;
-    case 6: if(at_ms()>30000){at_next();tchat_t m[1];int n=chat_get(m,1);LOG("rc16: chat despues: %s | ultimo=%s: %s",chat_status(),n?m[0].name:"",n?m[0].text:"");quit=1;}break;
+    case 4: if(at_ms()>4000){at_next();u64 t0=gettime();LOG("chat_stop() desde el hilo principal...");chat_stop();LOG("chat_stop() volvio en %u ms",(unsigned)ticks_to_millisecs(gettime()-t0));}break;
+    case 5: if(at_ms()>3000){at_next();LOG("chat_start()");chat_start(&pinfo);}break;
+    case 6: if(at_ms()>30000){at_next();tchat_t m[1];int n=chat_get(m,1);LOG("chat despues: %s | ultimo=%s: %s",chat_status(),n?m[0].name:"",n?m[0].text:"");quit=1;}break;
 #elif defined(GUARD_TEST)
-    case 3: if(at_ms()>5000){at_next();LOG("rc16: bloqueo simulado del hilo principal (esperando HOME de xdotool)");guard_test_hang(1);}break;
+    case 3: if(at_ms()>5000){at_next();LOG("bloqueo simulado del hilo principal (esperando HOME de xdotool)");guard_test_hang(1);}break;
 #else
     case 3: if(at_ms()>20000){at_next();quit=1;}break;
 #endif
     }
 #elif defined(AUTOTEST_SOAK)
-    /* rc14/rc8: soak de memoria: canal con chat real + 3 emotes animados distintos cada 2,5 s */
+    /* soak de memoria: canal con chat real + 3 emotes animados distintos cada 2,5 s */
     switch(at_step){
     case 0: if(at_wait(SCR_HOME,8000)){at_next();open_channel(NULL,AT_CHAN);}break;
     case 1: if(at_wait(SCR_CHAN,6000)){at_next();start_watch();}break;
@@ -1200,7 +1239,7 @@ chat_test_stuck();
     case 1: if(at_wait(SCR_CHAN,9000)){at_next();start_watch();}break;
     case 2: if(at_wait(SCR_WATCH,35000)){b=WPAD_BUTTON_PLUS;at_next();}break;
     case 3: if(at_wait(SCR_WATCH,3000)){b=WPAD_BUTTON_PLUS;at_next();}break;
-    case 4: if(at_wait(SCR_WATCH,35000)){LOG("autotest rc3 end (chat reconectado)");at_next();quit=1;}break;
+    case 4: if(at_wait(SCR_WATCH,35000)){LOG("autotest end (chat reconectado)");at_next();quit=1;}break;
     }
 #endif
     return b;
@@ -1219,10 +1258,12 @@ int main(int argc, char **argv) {
     fat_ok = fatInitDefault();
     tp_init();
     curl_global_init(CURL_GLOBAL_DEFAULT);
-    if (fat_ok) cfg_load();
+    i18n_init();               /* default: Wii system language; English for any other console language */
+    k_lang_default_from_ui();  /* stream-language filter default follows it until the user picks one */
+    if (fat_ok) cfg_load();    /* a language saved on SD/USB overrides the console language */
     t_start = gettime();
     dlog_init(fat_ok);
-    guard_init();   /* rc16: vigilante del hilo principal (HOME de emergencia, log, corta sockets) */
+    guard_init();   /* vigilante del hilo principal (HOME de emergencia, log, corta sockets) */
     dlog("KickWii " TV_VERSION " | IOS %d | pantalla %s | SD %s", IOS_GetVersion(), gfx_widescreen() ? "16:9" : "4:3", fat_ok ? "ok" : "no");
     {
         extern unsigned char __bss_end[];
@@ -1245,9 +1286,9 @@ int main(int argc, char **argv) {
     rebuild_filter();
     int net = intro_run();          /* intro con la imagen de carga + Clair de lune; la red se inicia en paralelo */
 #ifdef KBD_BENCH
-    { char kbq[40] = ""; ui_set_backdrop(draw_home); sui_text_input("Buscar", "Escribi el nombre de un canal", kbq, sizeof(kbq) - 1); quit = 1; }
+    { char kbq[40] = ""; ui_set_backdrop(draw_home); sui_text_input(T("Buscar"), T("Escribi el nombre de un canal"), kbq, sizeof(kbq) - 1); quit = 1; }
 #endif
-    if (!net) ui_toast("La red no est\xc3\xa1 lista; toc\xc3\xa1 Actualizar para reintentar.");
+    if (!net) ui_toast(T("La red no est\xc3\xa1 lista; toc\xc3\xa1 Actualizar para reintentar."));
     else {
         check_server();
         if(auth_due())auth_ensure();
@@ -1256,7 +1297,7 @@ int main(int argc, char **argv) {
     while (SYS_MainLoop() && !quit) {
         guard_where("loop: log");
         dlog_flush(0);
-        /* rc16: la revision periodica de la sesion (cada ~58 min o al vencer el token) ya no corre
+        /* la revision periodica de la sesion (cada ~58 min o al vencer el token) ya no corre
            mientras se mira un directo: cortaba el chat y hacia un pedido HTTP bloqueante en el hilo
            principal (si se trababa, imagen congelada + audio + botones muertos). Se hace al salir del
            directo; enviar un mensaje con el token vencido lo renueva igual (401 -> renovar). */
@@ -1294,7 +1335,7 @@ int main(int argc, char **argv) {
             int wrote = watch_frame(d != 0);
             guard_where("watch: acciones");
             if(watch_social_pressed||(d&(WPAD_BUTTON_MINUS|WPAD_BUTTON_2))){int sub=watch_social_pressed?watch_social_pressed==2:!!(d&WPAD_BUTTON_2);watch_social_pressed=0;chat_stop();social_screen(pinfo.slug,sub);if(watch_chat_started)chat_start(&pinfo);thumbs_pause(1);fs_details_was=fs_osd_was=-1;fs_last_pic=NULL;osd_t=gettime();curpic=NULL;continue;}
-            /* rc17: abajo ya no abre responder/moderar (pedido de Tobias) */
+            /* abajo ya no abre responder/moderar (pedido de Tobias) */
             if(chat_write_pressed||(d&WPAD_BUTTON_1)){chat_write_pressed=0;if(!auth_ready()){chat_stop();auth_screen();if(watch_chat_started)chat_start(&pinfo);}if(auth_ready()&&!watch_chat_started){watch_chat_started=1;chat_start(&pinfo);}if(auth_ready())auth_compose(pinfo.slug,pinfo.broadcaster_user_id);thumbs_pause(1);fs_details_was=fs_osd_was=-1;fs_last_pic=NULL;osd_t=gettime();curpic=NULL;continue;}
 
             if (!wrote) { guard_where("watch: vsync"); VIDEO_WaitVSync(); }
@@ -1384,7 +1425,7 @@ int main(int argc, char **argv) {
             if (!c_act && (d & WPAD_BUTTON_A) && !in_ptr.valid) c_act = chan_focus<3?chan_focus+1:chan_focus+3;
             if(c_act==6||c_act==7){chat_stop();social_screen(chan.slug,c_act==7);thumbs_pause(0);continue;}
             if (c_act == 1 && chan.live > 0) { start_watch(); continue; }
-            if (c_act == 2) { if (k_server[0]) { k_play_mode = (k_play_mode + 1) % PM_N; cfg_save(); } else ui_toast("Configur\xc3\xa1 un servidor companion para elegir el modo."); }
+            if (c_act == 2) { if (k_server[0]) { k_play_mode = (k_play_mode + 1) % PM_N; cfg_save(); } else ui_toast(T("Configur\xc3\xa1 un servidor companion para elegir el modo.")); }
             if (c_act == 3 || (d & WPAD_BUTTON_B)) { screen = prev_screen == SCR_SEARCH ? SCR_SEARCH : (prev_screen==SCR_BROWSE?SCR_BROWSE:SCR_HOME); continue; }
             if (d & WPAD_BUTTON_2) { kstream_t c = chan; open_channel(&c, c.slug); }
         }
@@ -1393,7 +1434,7 @@ int main(int argc, char **argv) {
      * hilos de miniaturas y la pantalla se deja en negro (nada a medio dibujar mientras el cargador toma la RAM). */
     gfx_clear(C_BG);
     wordmark(SCR_W / 2 - 50, 200);
-    gfx_text_c(&font_bold, SCR_W / 2, 250, "Saliendo...", C_DIM);
+    gfx_text_c(&font_bold, SCR_W / 2, 250, T("Saliendo..."), C_DIM);
     gfx_present();
     guard_kill_socks(LWP_THREAD_NULL);
     kc_stop();chat_stop();tp_stop();

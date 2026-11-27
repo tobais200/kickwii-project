@@ -1,3 +1,6 @@
+#include <zlib.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 /*
  * gfx.c - lienzo virtual por software 640/854x480 (RGB) convertido a YUYV en el XFB.
@@ -21,13 +24,13 @@ static int aspect_mode=0, system_wide=0;
 int gfx_canvas_width=640;
 int gfx_widescreen(void) { return aspect_mode?aspect_mode==2:system_wide; }
 int gfx_aspect_mode(void) { return aspect_mode; }
-/* rc12/rc6: zona segura para TVs con overscan (p. ej. Noblex). Todo el lienzo
+/* zona segura para TVs con overscan (p. ej. Noblex). Todo el lienzo
  * (SCR_W x 480, 4:3 o 16:9) se escala al 90% dentro de un rectangulo con margen
  * de SAFE_X px a los lados y SAFE_Y px arriba/abajo del XFB de 640x480. Los
  * margenes repiten el borde del lienzo, asi los fondos siguen llegando al borde
  * y ningun texto/boton queda fuera de la pantalla. El video a pantalla completa
  * sigue ocupando toda la pantalla (sobre el video el TV recorta igual). */
-/* rc15/rc10: el margen de los costados baja de 32 a 12 px en 4:3 y 16:9 (la UI llena el ancho del TV,
+/* el margen de los costados baja de 32 a 12 px en 4:3 y 16:9 (la UI llena el ancho del TV,
  * con un margen chico para el overscan). Los margenes ahora son negros:
  * antes repetian el borde del lienzo y en TVs que muestran todo se veian franjas de color. */
 #define SAFE_X 12
@@ -179,6 +182,15 @@ static inline u32 rgb2yuyv(u32 a, u32 b) {
 
 #ifdef KBD_BENCH
 unsigned gfx_last_conv_us;
+#endif
+
+#ifdef SHOTTOUR
+void gfx_dump_xfb(const char *path) {
+    int w = rmode->fbWidth, h = rmode->xfbHeight; uLongf zl = compressBound(w * h * 2);
+    unsigned char *z = malloc(zl); if (!z) return;
+    if (compress2(z, &zl, xfb[cur], w * h * 2, 1) == Z_OK) { FILE *f = fopen(path, "wb"); if (f) { int hd[2] = { w, h }; fwrite(hd, 4, 2, f); fwrite(z, 1, zl, f); fclose(f); } }
+    free(z);
+}
 #endif
 void gfx_present(void) {
     guard_beat();
@@ -375,19 +387,172 @@ int utf8_next(const char **ps) {
     *ps += 1; return '?';
 }
 
+static const unsigned char *g_bits;   /* bitmap of the glyph returned by glyph() */
+static int g_packed;                   /* 1 = 4-bit CJK bitmap */
+static int cjk_active = 0;
+static void cjk_fb_release(void);
+static CjkSet cjk_cur[4];            /* glyph tables of the active CJK language (inside cjk_mem) */
+static unsigned char *cjk_mem = NULL;
+/* Inflate the glyph subset of the selected CJK language into the heap; free it for Latin languages. */
+void gfx_cjk_select(int set) {
+    int i;
+    if (set < 1 || set > 4) set = 0;
+    if (set == cjk_active) return;
+    cjk_active = 0;
+    free(cjk_mem); cjk_mem = NULL;
+    cjk_fb_release();   /* the shared fallback is inflated again on the next CJK character */
+    memset(cjk_cur, 0, sizeof(cjk_cur));
+    if (!set) return;
+    {
+        uLongf len = cjk_rawlen[set - 1];
+        unsigned char *m = malloc(len);
+        if (!m) return;
+        if (uncompress(m, &len, cjk_zdata[set - 1], cjk_zlen[set - 1]) != Z_OK || len != cjk_rawlen[set - 1]) { free(m); return; }
+        for (i = 0; i < 4; i++) {
+            const unsigned *h = (const unsigned *)(m + 16 * i);
+            cjk_cur[i].n = (int)h[0];
+            cjk_cur[i].cp = (const unsigned short *)(m + h[1]);
+            cjk_cur[i].g = (const Glyph *)(m + h[2]);
+            cjk_cur[i].bits = m + h[3];
+        }
+        cjk_mem = m; cjk_active = set;
+    }
+}
+static CjkSet cjk_fb[4];
+static unsigned char *cjk_fb_mem = NULL;
+static int cjk_fb_ok = 0, cjk_fb_failed = 0;
+static void cjk_fb_release(void) {
+    free(cjk_fb_mem); cjk_fb_mem = NULL; cjk_fb_ok = 0; cjk_fb_failed = 0;
+    memset(cjk_fb, 0, sizeof(cjk_fb));
+}
+static void cjk_fb_ensure(void) {
+    int i;
+    if (cjk_fb_ok || !cjk_fb_zlen) return;
+    if (cjk_fb_failed) { cjk_fb_failed--; return; }   /* after a failed inflate, retry only every 2000 lookups */
+    {
+        uLongf len = cjk_fb_rawlen;
+        unsigned char *m = malloc(len);
+        if (!m) { cjk_fb_failed = 2000; return; }
+        if (uncompress(m, &len, cjk_fb_z, cjk_fb_zlen) != Z_OK || len != cjk_fb_rawlen) { free(m); cjk_fb_failed = 2000; return; }
+        memset(cjk_fb, 0, sizeof(cjk_fb));
+        for (i = 0; i < 4; i++) {
+            const unsigned *h = (const unsigned *)(m + 16 * i);
+            if (!h[0]) continue;
+            cjk_fb[i].n = (int)h[0];
+            cjk_fb[i].cp = (const unsigned short *)(m + h[1]);
+            cjk_fb[i].g = (const Glyph *)(m + h[2]);
+            cjk_fb[i].bits = m + h[3];
+        }
+        cjk_fb_mem = m; cjk_fb_ok = 1;
+    }
+}
+static int cp_needs_cjk(int cp) {
+    return (cp >= 0x1100 && cp <= 0x11FF) || (cp >= 0x2E80 && cp <= 0x9FFF)
+        || (cp >= 0xA960 && cp <= 0xA97F) || (cp >= 0xAC00 && cp <= 0xD7AF)
+        || (cp >= 0xF900 && cp <= 0xFAFF) || (cp >= 0xFE10 && cp <= 0xFE19)
+        || (cp >= 0xFF00 && cp <= 0xFFEF);
+}
+/* Hollow box used when a CJK/Hangul/kana code point is still missing after the fallback set. */
+#define CJK_BOX_W 12
+#define CJK_BOX_H 13
+static unsigned char cjk_box4[(CJK_BOX_W * CJK_BOX_H + 1) / 2];   /* 4-bit alpha, 2 pixels per byte */
+static Glyph cjk_box_g;
+static int cjk_box_ready = 0;
+static const Glyph *cjk_placeholder(const Font *f) {
+    int w, h, i, j, adv;
+    if (!cjk_box_ready) {
+        w = CJK_BOX_W; h = CJK_BOX_H; adv = 14;
+        memset(cjk_box4, 0, sizeof(cjk_box4));
+        for (j = 0; j < h; j++) for (i = 0; i < w; i++) {
+            int on = (j == 0 || j == h - 1 || i == 0 || i == w - 1);
+            if (!on) continue;
+            int n = j * w + i, a = 12; /* 4-bit */
+            if ((n >> 1) >= (int)sizeof(cjk_box4)) continue;
+            unsigned char *p = &cjk_box4[n >> 1];
+            if (n & 1) *p = (*p & 0xF0) | a; else *p = (*p & 0x0F) | (a << 4);
+        }
+        cjk_box_g.w = w; cjk_box_g.h = h; cjk_box_g.xoff = 1; cjk_box_g.yoff = -1;
+        cjk_box_g.adv = adv; cjk_box_g.off = 0;
+        cjk_box_ready = 1;
+    }
+    cjk_box_g.yoff = 0;
+    (void)f;
+    g_bits = cjk_box4; g_packed = 1;
+    return &cjk_box_g;
+}
+static const Glyph *cjk_lookup(const Font *f, int cp) {
+    static Glyph tmp;
+    int fi = f == &font_small ? 0 : f == &font_body ? 1 : (f == &font_big ? 3 : 2), pass;
+    static const int base_asc[4] = { 12, 13, 14, 28 };
+    for (pass = 0; pass < 2; pass++) {
+        int sets = pass ? 0 : cjk_active, try_sz = fi;
+        if (!pass && !cjk_active) continue;
+        for (;;) {
+            const CjkSet *c = sets ? &cjk_cur[try_sz] : &cjk_names[try_sz];
+            int lo = 0, hi = c->n - 1;
+            while (lo <= hi) {
+                int mid = (lo + hi) >> 1;
+                if (c->cp[mid] == cp) {
+                    tmp = c->g[mid];
+                    tmp.yoff += f->ascent - base_asc[try_sz];
+                    g_bits = c->bits; g_packed = 1;
+                    return &tmp;
+                }
+                if (c->cp[mid] < cp) lo = mid + 1; else hi = mid - 1;
+            }
+            if (try_sz == 3) try_sz = 2; else break;   /* big falls back to the 16px bold glyph */
+        }
+    }
+    /* Common fallback (body size, used for any font size with a y-offset). Lazy-inflated. */
+    cjk_fb_ensure();
+    if (cjk_fb_ok) {
+        int fi2, try_sz;
+        static const int base_asc_fb[4] = { 12, 13, 14, 28 };
+        int prefer[] = { fi, 1, 2, 0, 3 };
+        for (fi2 = 0; fi2 < 5; fi2++) {
+            const CjkSet *c;
+            int lo, hi;
+            try_sz = prefer[fi2];
+            c = &cjk_fb[try_sz];
+            if (!c->n) continue;
+            lo = 0; hi = c->n - 1;
+            while (lo <= hi) {
+                int mid = (lo + hi) >> 1;
+                if (c->cp[mid] == cp) {
+                    tmp = c->g[mid];
+                    tmp.yoff += f->ascent - base_asc_fb[try_sz];
+                    g_bits = c->bits; g_packed = 1;
+                    return &tmp;
+                }
+                if (c->cp[mid] < cp) lo = mid + 1; else hi = mid - 1;
+            }
+        }
+    }
+    return NULL;
+}
 static const Glyph *glyph(const Font *f, int cp) {
+    if (cp > 255) {
+        const Glyph *c = cjk_lookup(f, cp);
+        if (c) return c;
+        if (cp_needs_cjk(cp)) return cjk_placeholder(f);
+    }
     if (cp < 32 || cp > 255 || (cp >= 127 && cp < 160)) cp = '?';
+    g_bits = f->bits; g_packed = 0;
     return &f->g[cp - 32];
 }
 
 static void draw_glyph(const Font *f, const Glyph *g, int pen, int y, u32 c) {
-    const unsigned char *b = f->bits + g->off;
+    const unsigned char *b = g_bits + (g_packed ? 0 : g->off);
+    const unsigned char *b4 = g_bits + g->off;
     int gx = pen + g->xoff, gy = y + g->yoff, i, j;
+    (void)f;
     for (j = 0; j < g->h; j++) {
         int yy = gy + j;
         if (yy < cy0 || yy >= cy1) continue;
         for (i = 0; i < g->w; i++) {
-            int xx = gx + i, a = b[j * g->w + i];
+            int xx = gx + i, a;
+            if (g_packed) { int n = j * g->w + i; a = (b4[n >> 1] >> ((n & 1) ? 0 : 4)) & 15; a = a * 17; }
+            else a = b[j * g->w + i];
             if (!a || xx < cx0 || xx >= cx1) continue;
             u32 *p = &canvas[yy * SCR_W + xx];
             *p = a == 255 ? c : blend(*p, c, a);
@@ -563,7 +728,7 @@ void gfx_ui_cache_rows(int y0, int y1) {
 }
 
 /* rowsrc[y]: 0 = negro (o video), 1 = fila de la UI cacheada (video encima), 2 = UI opaca (sin video) */
-/* rc14: actualizar solo pedazos de la UI (emotes animados del chat) sin invalidar todo
+/* actualizar solo pedazos de la UI (emotes animados del chat) sin invalidar todo
  * el cache: se marcan rectangulos del lienzo, se reconvierten solo esas columnas de esas
  * filas a YUYV y gfx_composite las copia a cada XFB aunque este en modo parcial. */
 static short ui_mx0[SCR_H], ui_mx1[SCR_H], pend_c0[2][SCR_H], pend_c1[2][SCR_H];
@@ -647,7 +812,7 @@ void gfx_composite(const tv_pic_t *p, int vx, int vy, int vw, int vh, const unsi
     /* UI coordinates are genuine 854x480 / 640x480 square-pixel coordinates.
        Only the final scanout is compressed into the fixed 640-pixel XFB. */
     safe_maps();
-    /* rc12: el rectangulo del video pasa por la misma zona segura que la UI (salvo pantalla completa). */
+    /* el rectangulo del video pasa por la misma zona segura que la UI (salvo pantalla completa). */
     int bx=full?0:SAFE_X+vx*SAFE_W/SCR_W;
     int by=full?0:SAFE_Y+vy*SAFE_H/SCR_H,bw=full?FB_W:vw*SAFE_W/SCR_W,bh=full?SCR_H:vh*SAFE_H/SCR_H;
     int rw=bw,rh=bh;

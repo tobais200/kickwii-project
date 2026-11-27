@@ -78,6 +78,9 @@ u32 in_poll(void) {
     PAD_ScanPads();
     d = map_classic(WPAD_ButtonsDown(0)) | map_gc(PAD_ButtonsDown(0));
     held = map_classic(WPAD_ButtonsHeld(0)) | map_gc(PAD_ButtonsHeld(0));
+#ifdef SHOTTOUR
+    { void shottour_tick(void); shottour_tick(); }
+#endif
     d |= inj_btn; inj_btn = 0;
     now = gettime();
 
@@ -95,7 +98,7 @@ u32 in_poll(void) {
     if (forced) {
         /* puntero fijado por la prueba automatica */
     } else if (wd && wd->ir.valid) {
-        /* rc12: el IR esta en coordenadas del XFB; se pasa al lienzo de la zona segura. */
+        /* el IR esta en coordenadas del XFB; se pasa al lienzo de la zona segura. */
         vx = gfx_pointer_x((int)wd->ir.x); vy = gfx_pointer_y((int)wd->ir.y);
         in_ptr.valid = wd->ir.x >= 0 && wd->ir.x < FB_W; in_ptr.idle = 0;
     } else {
@@ -141,6 +144,9 @@ u32 in_poll(void) {
 /* posicion forzada del puntero (pruebas automaticas) */
 void in_set_ptr(int x, int y, int valid) { vx = x; vy = y; in_ptr.x = x; in_ptr.y = y; in_ptr.valid = valid; in_ptr.virt = 1; in_ptr.idle = 0; forced = valid; }
 
+#ifdef SHOTTOUR
+void in_hide_ptr(void) { forced = 1; in_ptr.valid = 0; in_ptr.virt = 1; }
+#endif
 int in_key(void) {
     if (kq_head == kq_tail) return 0;
     int k = keyq[kq_head];

@@ -159,13 +159,13 @@ static void draw(int ms, int out_ms) {
             int on = (ph == i || ph == i + 1);
             gfx_circle(SCR_W/2 - 16 + i * 16, 330, on ? 5 : 4, on ? C_ACCENT : 0x1E2A18, 255);
         }
-        gfx_text_c(&font_small, SCR_W/2, 350, net_done ? (net_res ? "Conectado" : "Sin red") : "Conectando...", 0x5A5E64);
+        gfx_text_c(&font_small, SCR_W/2, 350, net_done ? (net_res ? T("Conectado") : T("Sin red")) : T("Conectando..."), 0x5A5E64);
     }
     /* pie: aviso y atribucion de la musica (CC BY 3.0) */
     if (ms > 2200) {
-        gfx_text_c(&font_small, SCR_W/2, 430, "App no oficial - no afiliada a Kick", 0x45484D);
-        gfx_text_c(&font_small, SCR_W/2, 448, "M\xc3\xbasica: Debussy, Clair de lune - piano Laurens Goedhart (dominio p\xc3\xbablico)", 0x45484D);
-        gfx_text(&font_small, SCR_W-92, 18, "A: saltar", 0x45484D);
+        gfx_text_c(&font_small, SCR_W/2, 430, T("App no oficial - no afiliada a Kick"), 0x45484D);
+        gfx_text_c(&font_small, SCR_W/2, 448, T("M\xc3\xbasica: Debussy, Clair de lune - piano Laurens Goedhart (dominio p\xc3\xba" "blico)"), 0x45484D);
+        gfx_text(&font_small, SCR_W-92, 18, T("A: saltar"), 0x45484D);
     }
     /* entrada desde negro y salida a negro */
     if (ms < 500) fade_black(255 - ms * 255 / 500);
@@ -195,7 +195,7 @@ int intro_run(void) {
         if (out_ms >= 350) break;
     }
     if (net_th != LWP_THREAD_NULL) {
-        if (!net_done) { sui_busy("KickWii", "Iniciando la red..."); while (!net_done) { ui_busy_tick(); VIDEO_WaitVSync(); } sui_busy_end(); }
+        if (!net_done) { sui_busy("KickWii", T("Iniciando la red...")); while (!net_done) { ui_busy_tick(); VIDEO_WaitVSync(); } sui_busy_end(); }
         LWP_JoinThread(net_th, NULL); net_th = LWP_THREAD_NULL;
     }
     return net_res;

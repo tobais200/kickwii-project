@@ -1,6 +1,6 @@
 /* Public Kick chat (read side). Negotiate the provider (Centrifugo since Oct 2026),
    retaining Pusher support if Kick offers it again. Posting goes through the official API (auth.c).
-   RC5: keeps message/sender ids + badges (reply/moderation), emotes shown as :name:, own echo
+   keeps message/sender ids + badges, emotes shown as :name:, own echo
    merged with the real message, and live follow/sub notices polled from the developer relay. */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -26,13 +26,13 @@ static unsigned long emo_id[NEMO];static char emo_name[NEMO][32];static int emo_
 static char me[64];static volatile int my_badges;
 static void emote_seen(unsigned long id,const char*name){if(!id||!name[0])return;for(int i=0;i<emo_n;i++)if(emo_id[i]==id)return;int k=emo_n<NEMO?emo_n++:(int)(id%NEMO);emo_id[k]=id;snprintf(emo_name[k],32,"%s",name);}
 /* "[emote:123:KEKW]" -> ":KEKW:" (la fuente de la Wii no dibuja imagenes en el chat). */
-/* rc13: ademas guarda donde quedo cada ":nombre:" para dibujar la imagen del emote. */
+/* ademas guarda donde quedo cada ":nombre:" para dibujar la imagen del emote. */
 static void emote_display_m2(const char*in,char*out,int cap,tchat_t*m,int seen){int j=0;if(m)m->ne=0;for(int i=0;in[i]&&j<cap-1;){if(!strncmp(in+i,"[emote:",7)){const char*a=in+i+7,*c1=strchr(a,':'),*e=c1?strchr(c1+1,']'):NULL;if(c1&&e&&e-c1<34&&c1>a&&c1-a<16){char nm[34];int n=(int)(e-c1-1);memcpy(nm,c1+1,n);nm[n]=0;if(seen&&mtx_ok)emote_seen(strtoul(a,NULL,10),nm);int k=snprintf(out+j,cap-j,":%s:",nm);if(k<0||k>=cap-j)break;
   if(m&&m->ne<8&&j<256&&k<256){int ok=1;for(const char*q=a;q<c1;q++)if(*q<'0'||*q>'9')ok=0;if(ok){m->eat[m->ne]=j;m->elen[m->ne]=k;snprintf(m->eid[m->ne],sizeof(m->eid[0]),"%.*s",(int)(c1-a),a);m->ne++;}}
   j+=k;i=(int)(e-in)+1;continue;}}out[j++]=in[i++];}out[j]=0;}
 static void emote_display_m(const char*in,char*out,int cap,tchat_t*m){emote_display_m2(in,out,cap,m,1);}
 void emote_display(const char*in,char*out,int cap){emote_display_m(in,out,cap,NULL);}
-/* rc14: vista previa del teclado (no anota "vistos") */
+/* vista previa del teclado (no anota "vistos") */
 void emote_parse_preview(const char*in,tchat_t*m){memset(m,0,sizeof(*m));emote_display_m2(in,m->text,sizeof(m->text),m,0);}
 int emote_url(const char*id,char*out,int cap){if(!id||!id[0]||strlen(id)>20)return 0;for(const char*q=id;*q;q++)if(*q<'0'||*q>'9')return 0;snprintf(out,cap,"https://files.kick.com/emotes/%s/static",id);return 1;}
 static void push_full(const char *name,const char *text,const char *color,const char*id,unsigned long uid,int badge,int echo,int sys) {
@@ -68,20 +68,20 @@ static void copy_field(const char *o,const char *key,char *out,int size){const c
 /* Quita del chat local un mensaje (id) o todos los de un usuario (who); usado por eventos de Kick y por la moderación desde la Wii. */
 void chat_forget(const char*mid,const char*who){if(!mtx_ok)return;if(!mid)mid="";if(!who)who="";if(!mid[0]&&!who[0])return;LWP_MutexLock(mtx);int w=0;for(int k=0;k<count;k++){tchat_t m=ring[(head+k)%NMSG];if((mid[0]&&!strcmp(m.id,mid))||(who[0]&&!m.sys&&!strcasecmp(m.name,who)))continue;ring[(head+w)%NMSG]=m;w++;}count=w;gen++;LWP_MutexUnlock(mtx);}
 static int process_event(chat_net *n,char *json,int provider,int *subscribed) {
- const char *err=jget(json,"error");if(err&&!jis_null(err)){snprintf(status,sizeof(status),"Kick rechazo chat publico; reintento con espera");return -2;}
+ const char *err=jget(json,"error");if(err&&!jis_null(err)){snprintf(status,sizeof(status),T("Kick rechazo chat publico; reintento con espera"));return -2;}
  if(!strcmp(jws(json),"{}")){cn_send(n,"{}");return 1;}
  char event[128];const char *env=json;
  if(provider==1) {
   const char *connect=jget(json,"connect");
   if(connect){char sub[160];snprintf(sub,sizeof(sub),"{\"id\":2,\"subscribe\":{\"channel\":\"chatrooms.%lu.v2\"}}",room_id);return cn_send(n,sub);}
-  if(jget(json,"subscribe")){*subscribed=1;snprintf(status,sizeof(status),"Kick WSS: conectado (solo lectura)");}
+  if(jget(json,"subscribe")){*subscribed=1;snprintf(status,sizeof(status),T("Kick WSS: conectado (solo lectura)"));}
   env=jpath(json,"push.pub.data");if(!env)return 1;
  }
  copy_field(env,"event",event,sizeof(event));
- if(!strcmp(event,"pusher:error")){snprintf(status,sizeof(status),"Kick retiro este servidor Pusher");return -2;}
+ if(!strcmp(event,"pusher:error")){snprintf(status,sizeof(status),T("Kick retiro este servidor Pusher"));return -2;}
  if(!strcmp(event,"pusher:ping"))return cn_send(n,"{\"event\":\"pusher:pong\",\"data\":{}}");
  if(!strcmp(event,"pusher:connection_established")){char sub[200];snprintf(sub,sizeof(sub),"{\"event\":\"pusher:subscribe\",\"data\":{\"auth\":\"\",\"channel\":\"chatrooms.%lu.v2\"}}",room_id);return cn_send(n,sub);}
- if(!strcmp(event,"pusher_internal:subscription_succeeded")){*subscribed=1;snprintf(status,sizeof(status),"Kick Pusher: conectado");}
+ if(!strcmp(event,"pusher_internal:subscription_succeeded")){*subscribed=1;snprintf(status,sizeof(status),T("Kick Pusher: conectado"));}
  if(strstr(event,"ChatroomClearEvent")){clear_messages();return 1;}
  if(strstr(event,"MessageDeletedEvent")||strstr(event,"UserBannedEvent")){
   const char *dd=jget(env,"data");char dec[4096];if(dd&&*jws(dd)=='"'){jstr(dd,dec,sizeof(dec));dd=dec;}
@@ -121,7 +121,7 @@ static void *chat_thread_body(void *unused) {
   snprintf(uuid,sizeof(uuid),"%08lx-%04x-4%03x-%04x-%08x%04x",t,rand()&65535,rand()&4095,0x8000|(rand()&16383),rand(),rand()&65535);
   snprintf(url,sizeof(url),"https://web.kick.com/api/v1/realtime/channels/%lu/chat/connection",channel_id);
   snprintf(body,sizeof(body),"{\"client\":{\"id\":\"%s\",\"type\":\"web\"},\"capabilities\":{\"accepted_providers\":[{\"provider\":\"centrifugo\"},{\"provider\":\"pusher\"}]}}",uuid);
-  snprintf(status,sizeof(status),"Conectando chat publico Kick...");int ok=public_post(url,body,response,16384),provider=0,terminal=0,subscribed=0;
+  snprintf(status,sizeof(status),T("Conectando chat publico Kick..."));int ok=public_post(url,body,response,16384),provider=0,terminal=0,subscribed=0;
   if(ok){const char *arr=jpath(response,"data.connections"),*c;
    for(c=arr?jarr_first(arr):NULL;c;c=jarr_next(c)) {
     char p[32];copy_field(c,"provider",p,sizeof(p));
@@ -154,7 +154,7 @@ static void *chat_thread_body(void *unused) {
   else if(ok&&allowed)dlog("chat: no se pudo abrir el websocket");
   if(!run)break;
   if(subscribed)failures=0;else if(failures<5)failures++;
-  int wait=terminal?300:(1<<failures);snprintf(status,sizeof(status),"Chat desconectado; reintento en %d s",wait);
+  int wait=terminal?300:(1<<failures);snprintf(status,sizeof(status),T("Chat desconectado; reintento en %d s"),wait);
   int i;for(i=0;i<wait*10&&run;i++)usleep(100000);
  }
  cn_close(net);free(net);free(response);return NULL;
@@ -182,10 +182,10 @@ static void notice_line(const char*ev){
  char kind[16],user[40],line[200];copy_field(ev,"kind",kind,sizeof(kind));copy_field(ev,"user",user,sizeof(user));if(!user[0])return;
  for(char*q=user;*q;q++)if((unsigned char)*q<32)*q=' ';
  long n=(long)jnum(jget(ev,"count")),months=(long)jnum(jget(ev,"months"));
- if(!strcmp(kind,"follow"))snprintf(line,sizeof(line),"\xc2\xbb %s empez\xc3\xb3 a seguir el canal",user);
- else if(!strcmp(kind,"sub"))snprintf(line,sizeof(line),"\xc2\xbb %s se suscribi\xc3\xb3",user);
- else if(!strcmp(kind,"resub")){if(months>1)snprintf(line,sizeof(line),"\xc2\xbb %s renov\xc3\xb3 su suscripci\xc3\xb3n (%ld meses)",user,months);else snprintf(line,sizeof(line),"\xc2\xbb %s renov\xc3\xb3 su suscripci\xc3\xb3n",user);}
- else if(!strcmp(kind,"gift"))snprintf(line,sizeof(line),"\xc2\xbb %s regal\xc3\xb3 %ld suscripci%s",user,n>0?n:1,n==1?"\xc3\xb3n":"ones");
+ if(!strcmp(kind,"follow"))snprintf(line,sizeof(line),T("\xc2\xbb %s empez\xc3\xb3 a seguir el canal"),user);
+ else if(!strcmp(kind,"sub"))snprintf(line,sizeof(line),T("\xc2\xbb %s se suscribi\xc3\xb3"),user);
+ else if(!strcmp(kind,"resub")){if(months>1)snprintf(line,sizeof(line),T("\xc2\xbb %s renov\xc3\xb3 su suscripci\xc3\xb3n (%ld meses)"),user,months);else snprintf(line,sizeof(line),T("\xc2\xbb %s renov\xc3\xb3 su suscripci\xc3\xb3n"),user);}
+ else if(!strcmp(kind,"gift")){if(n<=1)snprintf(line,sizeof(line),T("\xc2\xbb %s regal\xc3\xb3 una suscripci\xc3\xb3n"),user);else snprintf(line,sizeof(line),T("\xc2\xbb %s regal\xc3\xb3 %ld suscripciones"),user,n);}
  else return;
  push_full("",line,"#53FC18",NULL,0,0,0,1);
 }
@@ -196,8 +196,8 @@ static void *notice_thread_body(void*unused){
   if(!watched||ticks_to_millisecs(now-watched)>25*60*1000){
    snprintf(url,sizeof(url),"%s/events/watch",nrelay);snprintf(body,sizeof(body),"broadcaster_user_id=%lu",nb);long c=relay_call(url,body,buf,8192);
    if(!nrun)break;
-   if(c==200){watched=gettime();if(seq<0)seq=(long)jnum(jget(buf,"seq"));if(!said){said=1;push_full("","\xc2\xbb Avisos de seguidores y suscripciones activados","#7f8a8f",NULL,0,0,0,1);}}
-   else{if(!said){said=1;char t[160];snprintf(t,sizeof(t),c==503?"Avisos de seguidores/suscripciones no disponibles por ahora (lo activa el desarrollador).":c?"Avisos de seguidores/suscripciones: el relay respondió HTTP %ld; reintento en un minuto.":"Avisos de seguidores/suscripciones: sin conexión con el relay (red %ld); reintento en un minuto.",c?c:(long)relay_rc);push_full("",t,"#7f8a8f",NULL,0,0,0,1);}nsleep(c==503?600:60);continue;}
+   if(c==200){watched=gettime();if(seq<0)seq=(long)jnum(jget(buf,"seq"));if(!said){said=1;push_full("",T("\xc2\xbb Avisos de seguidores y suscripciones activados"),"#7f8a8f",NULL,0,0,0,1);}}
+   else{if(!said){said=1;char t[160];snprintf(t,sizeof(t),c==503?T("Avisos de seguidores/suscripciones no disponibles por ahora (lo activa el desarrollador)."):c?T("Avisos de seguidores/suscripciones: el relay respondió HTTP %ld; reintento en un minuto."):T("Avisos de seguidores/suscripciones: sin conexión con el relay (red %ld); reintento en un minuto."),c?c:(long)relay_rc);push_full("",t,"#7f8a8f",NULL,0,0,0,1);}nsleep(c==503?600:60);continue;}
   }
   snprintf(url,sizeof(url),"%s/events/poll?b=%lu&after=%ld",nrelay,nb,seq<0?0:seq);long c=relay_call(url,NULL,buf,8192);
   if(c==200){long ns=(long)jnum(jget(buf,"seq"));const char*arr=jget(buf,"events");if(seq>=0)for(const char*e=arr?jarr_first(arr):NULL;e;e=jarr_next(e))notice_line(e);seq=ns;const char*act=jget(buf,"active");if(act&&!strncmp(jws(act),"false",5))watched=0;}
@@ -206,7 +206,7 @@ static void *notice_thread_body(void*unused){
  }
  free(buf);return NULL;
 }
-/* rc16: el hilo principal NUNCA espera sin limite a un hilo de chat/avisos.
+/* el hilo principal NUNCA espera sin limite a un hilo de chat/avisos.
  * Antes chat_stop() hacia LWP_JoinThread directo: si el hilo estaba trabado en un socket de IOS
  * (Wi-Fi que se corta, en la Wii real curl no siempre logra aplicar sus timeouts) la imagen quedaba
  * congelada con el audio sonando y sin botones. Ahora: se le avisa, a los 1,5 s se le cortan los
@@ -231,7 +231,7 @@ void chat_stop(void){pending_start=0;notices_stop();stop_bounded(&th,&run,&th_do
 /* hilo principal, cada cuadro (chat_get): arranca el chat que quedo esperando a un zombi */
 static void chat_retry_pending(void);
 void chat_start(const kstream_t *s){chat_stop();
- if(!reap(&th_zombie,&th_done)){pending_s=*s;pending_start=1;snprintf(status,sizeof(status),"Chat: cerrando la conexion anterior...");return;}if(!mtx_ok){LWP_MutexInit(&mtx,false);mtx_ok=1;}clear_messages();my_badges=0;LWP_MutexLock(mtx);emo_n=0;LWP_MutexUnlock(mtx);snprintf(me,sizeof(me),"%s",auth_login());notices_start(s->broadcaster_user_id);channel_id=s->channel_id;room_id=s->chatroom_id;if(!channel_id||!room_id){snprintf(status,sizeof(status),"Chatroom no disponible");return;}run=1;th_done=0;if(LWP_CreateThread(&th,chat_thread,NULL,NULL,192*1024,48)<0){run=0;th_done=1;th=LWP_THREAD_NULL;}}
+ if(!reap(&th_zombie,&th_done)){pending_s=*s;pending_start=1;snprintf(status,sizeof(status),T("Chat: cerrando la conexion anterior..."));return;}if(!mtx_ok){LWP_MutexInit(&mtx,false);mtx_ok=1;}clear_messages();my_badges=0;LWP_MutexLock(mtx);emo_n=0;LWP_MutexUnlock(mtx);snprintf(me,sizeof(me),"%s",auth_login());notices_start(s->broadcaster_user_id);channel_id=s->channel_id;room_id=s->chatroom_id;if(!channel_id||!room_id){snprintf(status,sizeof(status),T("Chatroom no disponible"));return;}run=1;th_done=0;if(LWP_CreateThread(&th,chat_thread,NULL,NULL,192*1024,48)<0){run=0;th_done=1;th=LWP_THREAD_NULL;}}
 static void chat_retry_pending(void){if(pending_start&&th_done&&th==LWP_THREAD_NULL){kstream_t s=pending_s;pending_start=0;chat_start(&s);}}
 int chat_gen(void){return gen;}
 const char *chat_status(void){return status;}
@@ -318,7 +318,7 @@ static const char *soak_em[]={
 "[emote:3328343:benjazrage]",
 "[emote:3328352:benjazpapitayuncabro]",
 "[emote:3421179:benjazrata]"};
-/* rc14 soak: 3 emotes animados distintos por mensaje, rotando por toda la lista */
+/* soak: 3 emotes animados distintos por mensaje, rotando por toda la lista */
 void chat_test_soak(int k){char t[400];int n=sizeof(soak_em)/sizeof(soak_em[0]);if(!mtx_ok)return;
  snprintf(t,sizeof t,"soak %d %s texto %s y %s",k,soak_em[(k*3)%n],soak_em[(k*3+1)%n],soak_em[(k*3+2)%n]);
  push_full("Soak",t,"#53FC18","s",k,0,0,0);}

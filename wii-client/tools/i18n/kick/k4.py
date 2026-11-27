@@ -1,0 +1,95 @@
+K("Puntero + A: elegir tarjeta, chip o botón.  Cruceta: moverse por la grilla.\n",
+  "Pointer + A: pick a card, chip or button.  D-Pad: move around the grid.\n","Pointeur + A : choisir une carte, une puce ou un bouton.  Croix : se déplacer dans la grille.\n","Zeiger + A: Karte, Chip oder Taste wählen.  Steuerkreuz: im Raster bewegen.\n","Puntatore + A: scegli scheda, chip o pulsante.  Croce: muoviti nella griglia.\n","Aanwijzer + A: kaart, chip of knop kiezen.  Kruistoets: door het raster bewegen.\n","Ponteiro + A: escolher cartão, chip ou botão.  Direcional: mover pela grade.\n",
+  "ポインター + A: カード、チップ、ボタンを選択。  十字ボタン: グリッド内を移動。\n","指针 + A: 选择卡片、标签或按钮。  十字键: 在网格中移动。\n","포인터 + A: 카드, 칩, 버튼 선택.  십자 버튼: 그리드 이동.\n")
+K("Viendo un directo: B vuelve al canal, Izq/Der volumen, A muestra la barra, + cambia pantalla completa/chat, -: seguir, 2: suscribirse.  HOME: salir.\n",
+  "Watching a stream: B goes back to the channel, Left/Right volume, A shows the bar, + switches full screen/chat, -: follow, 2: subscribe.  HOME: quit.\n",
+  "Pendant un live : B revient à la chaîne, Gauche/Droite volume, A affiche la barre, + bascule plein écran/chat, - : suivre, 2 : s'abonner.  HOME : quitter.\n",
+  "Beim Stream: B zurück zum Kanal, Links/Rechts Lautstärke, A zeigt die Leiste, + wechselt Vollbild/Chat, -: folgen, 2: abonnieren.  HOME: beenden.\n",
+  "Durante una diretta: B torna al canale, Sx/Dx volume, A mostra la barra, + alterna schermo intero/chat, -: segui, 2: iscriviti.  HOME: esci.\n",
+  "Tijdens een stream: B terug naar het kanaal, Links/Rechts volume, A toont de balk, + wisselt volledig scherm/chat, -: volgen, 2: abonneren.  HOME: afsluiten.\n",
+  "Vendo uma live: B volta ao canal, Esq/Dir volume, A mostra a barra, + alterna tela cheia/chat, -: seguir, 2: inscrever-se.  HOME: sair.\n",
+  "視聴中: Bでチャンネルに戻る、左/右で音量、Aでバーを表示、+で全画面/チャット切替、-: フォロー、2: サブスク登録。  HOME: 終了。\n",
+  "观看直播时: B 返回频道,左/右调音量,A 显示控制栏,+ 切换全屏/聊天,-: 关注,2: 订阅。  HOME: 退出。\n",
+  "방송 시청 중: B 채널로 돌아가기, 좌/우 볼륨, A 바 표시, + 전체 화면/채팅 전환, -: 팔로우, 2: 구독.  HOME: 종료.\n")
+K("También sirven el Classic Controller, el mando de GameCube y un teclado USB.\n\n",
+  "The Classic Controller, the GameCube controller and a USB keyboard also work.\n\n","La manette Classique, la manette GameCube et un clavier USB fonctionnent aussi.\n\n","Classic Controller, GameCube-Controller und USB-Tastatur funktionieren auch.\n\n","Funzionano anche il Classic Controller, il controller GameCube e una tastiera USB.\n\n","De Classic Controller, de GameCube-controller en een USB-toetsenbord werken ook.\n\n","Também funcionam o Classic Controller, o controle de GameCube e um teclado USB.\n\n",
+  "クラシックコントローラ、ゲームキューブコントローラ、USBキーボードも使えます。\n\n","也可以使用传统手柄、GameCube 手柄和 USB 键盘。\n\n","클래식 컨트롤러, 게임큐브 컨트롤러, USB 키보드도 쓸 수 있습니다.\n\n")
+K("EXPLORAR CATEGORIAS\n","BROWSE CATEGORIES\n","PARCOURIR LES CATÉGORIES\n","KATEGORIEN ENTDECKEN\n","ESPLORA CATEGORIE\n","CATEGORIEËN VERKENNEN\n","EXPLORAR CATEGORIAS\n","カテゴリーを探す\n","浏览分类\n","카테고리 탐색\n")
+K("+ o Cat.: catalogo de Kick. Cruceta: scroll; A: directos de esa categoria. 1: buscar entre las categorias cargadas; -: grupos reales; 2: actualizar.\n",
+  "+ or Cat.: Kick catalog. D-Pad: scroll; A: streams in that category. 1: search the loaded categories; -: real groups; 2: refresh.\n",
+  "+ ou Cat. : catalogue Kick. Croix : défiler ; A : lives de cette catégorie. 1 : chercher parmi les catégories chargées ; - : groupes réels ; 2 : actualiser.\n",
+  "+ oder Kat.: Kick-Katalog. Steuerkreuz: scrollen; A: Streams dieser Kategorie. 1: in geladenen Kategorien suchen; -: echte Gruppen; 2: aktualisieren.\n",
+  "+ o Cat.: catalogo Kick. Croce: scorri; A: dirette di quella categoria. 1: cerca tra le categorie caricate; -: gruppi reali; 2: aggiorna.\n",
+  "+ of Cat.: Kick-catalogus. Kruistoets: scrollen; A: streams in die categorie. 1: zoeken in geladen categorieën; -: echte groepen; 2: vernieuwen.\n",
+  "+ ou Cat.: catálogo da Kick. Direcional: rolar; A: lives dessa categoria. 1: buscar nas categorias carregadas; -: grupos reais; 2: atualizar.\n",
+  "+ または カテゴリ: Kickのカタログ。十字ボタン: スクロール、A: そのカテゴリーの配信。1: 読み込んだカテゴリーを検索、-: グループ、2: 更新。\n",
+  "+ 或 分类: Kick 目录。十字键: 滚动;A: 该分类的直播。1: 在已加载的分类中搜索;-: 分组;2: 刷新。\n",
+  "+ 또는 카테고리: Kick 카탈로그. 십자 버튼: 스크롤, A: 그 카테고리의 방송. 1: 불러온 카테고리 검색, -: 그룹, 2: 새로고침.\n")
+K("Las portadas se cargan solo al verlas. El proveedor limita la cantidad de paginas: la barra informa el total disponible y cualquier carga parcial.\n\n",
+  "Covers load only when shown. The provider limits the number of pages: the bar shows the total available and any partial load.\n\n",
+  "Les couvertures se chargent seulement à l'affichage. Le fournisseur limite le nombre de pages : la barre indique le total disponible et tout chargement partiel.\n\n",
+  "Cover werden erst beim Anzeigen geladen. Der Anbieter begrenzt die Seitenzahl: Die Leiste zeigt die verfügbare Gesamtzahl und jede Teilladung.\n\n",
+  "Le copertine si caricano solo quando sono visibili. Il fornitore limita il numero di pagine: la barra indica il totale disponibile e ogni caricamento parziale.\n\n",
+  "Covers laden pas als ze zichtbaar zijn. De aanbieder beperkt het aantal pagina's: de balk toont het beschikbare totaal en elke gedeeltelijke lading.\n\n",
+  "As capas só carregam quando aparecem. O provedor limita a quantidade de páginas: a barra mostra o total disponível e qualquer carga parcial.\n\n",
+  "カバー画像は表示したときだけ読み込みます。ページ数には上限があり、バーに利用可能な合計と一部読み込みが表示されます。\n\n",
+  "封面只在显示时加载。服务商限制页数: 状态栏会显示可用总数和部分加载情况。\n\n",
+  "커버는 보일 때만 불러옵니다. 페이지 수에 제한이 있어 바에 전체 개수와 일부만 불러온 경우가 표시됩니다.\n\n")
+K("(se guarda en sd:/apps/KickWii/server.txt). Con el servidor tenés miniaturas, avatares, ",
+  "(saved in sd:/apps/KickWii/server.txt). With the server you get thumbnails, avatars, ","(enregistré dans sd:/apps/KickWii/server.txt). Avec le serveur, tu as les miniatures, les avatars, ","(gespeichert in sd:/apps/KickWii/server.txt). Mit dem Server gibt es Vorschaubilder, Avatare, ","(salvato in sd:/apps/KickWii/server.txt). Con il server hai miniature, avatar, ","(opgeslagen in sd:/apps/KickWii/server.txt). Met de server krijg je miniaturen, avatars, ","(salvo em sd:/apps/KickWii/server.txt). Com o servidor você tem miniaturas, avatares, ",
+  "(sd:/apps/KickWii/server.txt に保存)。サーバーを使うと、サムネイル、アバター、","(保存在 sd:/apps/KickWii/server.txt)。使用服务器可获得缩略图、头像、","(sd:/apps/KickWii/server.txt 에 저장). 서버를 쓰면 썸네일, 아바타, ")
+K("video por HTTP sin TLS (Proxy 360p) o transcodificado a 270p con ffmpeg.\n\n",
+  "video over HTTP without TLS (Proxy 360p) or transcoded to 270p with ffmpeg.\n\n","la vidéo en HTTP sans TLS (Proxy 360p) ou transcodée en 270p avec ffmpeg.\n\n","Video per HTTP ohne TLS (Proxy 360p) oder mit ffmpeg auf 270p umgewandelt.\n\n","video via HTTP senza TLS (Proxy 360p) o transcodificato a 270p con ffmpeg.\n\n","video via HTTP zonder TLS (Proxy 360p) of met ffmpeg omgezet naar 270p.\n\n","vídeo por HTTP sem TLS (Proxy 360p) ou transcodificado para 270p com ffmpeg.\n\n",
+  "TLSなしのHTTP動画(Proxy 360p)、またはffmpegで270pに変換した動画が使えます。\n\n","无 TLS 的 HTTP 视频(Proxy 360p)或用 ffmpeg 转码的 270p 视频。\n\n","TLS 없는 HTTP 영상 (Proxy 360p) 또는 ffmpeg로 270p 변환 영상을 쓸 수 있습니다.\n\n")
+K("La Wii descarga miniaturas, avatares, categorias y banners por HTTPS. Video hasta 360p; chat publico WSS de solo lectura, sin listado VOD. ",
+  "The Wii downloads thumbnails, avatars, categories and banners over HTTPS. Video up to 360p; read-only public WSS chat, no VOD list. ",
+  "La Wii télécharge miniatures, avatars, catégories et bannières en HTTPS. Vidéo jusqu'à 360p ; chat public WSS en lecture seule, sans liste de VOD. ",
+  "Die Wii lädt Vorschaubilder, Avatare, Kategorien und Banner per HTTPS. Video bis 360p; öffentlicher WSS-Chat nur lesen, keine VOD-Liste. ",
+  "La Wii scarica miniature, avatar, categorie e banner via HTTPS. Video fino a 360p; chat pubblica WSS in sola lettura, senza elenco VOD. ",
+  "De Wii downloadt miniaturen, avatars, categorieën en banners via HTTPS. Video tot 360p; openbare WSS-chat alleen lezen, geen VOD-lijst. ",
+  "O Wii baixa miniaturas, avatares, categorias e banners por HTTPS. Vídeo até 360p; chat público WSS somente leitura, sem lista de VODs. ",
+  "WiiがHTTPSでサムネイル、アバター、カテゴリー、バナーを取得します。動画は360pまで。公開WSSチャットは読み取り専用で、VOD一覧はありません。",
+  "Wii 通过 HTTPS 下载缩略图、头像、分类和横幅。视频最高 360p;公开 WSS 聊天为只读,没有录像列表。",
+  "Wii가 HTTPS로 썸네일, 아바타, 카테고리, 배너를 받습니다. 영상은 최대 360p, 공개 WSS 채팅은 읽기 전용이며 VOD 목록은 없습니다. ")
+K("Tolera minutos de diferencia del reloj; conserva la fecha aproximada correcta.\n\n",
+  "It tolerates a clock that is a few minutes off; keep the date roughly correct.\n\n","Tolère quelques minutes d'écart d'horloge ; garde une date à peu près correcte.\n\n","Toleriert Minuten Uhrabweichung; das Datum sollte ungefähr stimmen.\n\n","Tollera minuti di differenza dell'orologio; mantieni la data più o meno corretta.\n\n","Verdraagt een klok die minuten afwijkt; houd de datum ongeveer juist.\n\n","Tolera minutos de diferença no relógio; mantenha a data aproximadamente correta.\n\n",
+  "時計の数分のずれは問題ありません。日付はおおよそ正しくしておいてください。\n\n","可容忍几分钟的时钟误差;请保持日期大致正确。\n\n","시계가 몇 분 틀려도 괜찮습니다. 날짜는 대략 맞게 두세요.\n\n")
+K(" - cliente NO OFICIAL de kick.com hecho por fans.\n\n"," - UNOFFICIAL kick.com client made by fans.\n\n"," - client NON OFFICIEL de kick.com fait par des fans.\n\n"," - INOFFIZIELLER kick.com-Client von Fans.\n\n"," - client NON UFFICIALE di kick.com fatto dai fan.\n\n"," - ONOFFICIËLE kick.com-client gemaakt door fans.\n\n"," - cliente NÃO OFICIAL da kick.com feito por fãs.\n\n",
+  " - ファンが作った非公式のkick.comクライアント。\n\n"," - 由粉丝制作的非官方 kick.com 客户端。\n\n"," - 팬이 만든 비공식 kick.com 클라이언트.\n\n")
+K("NO está afiliado, autorizado ni respaldado por Kick (Kick Streaming Pty Ltd) ni por Nintendo. ",
+  "It is NOT affiliated with, authorized or endorsed by Kick (Kick Streaming Pty Ltd) or Nintendo. ","Il n'est NI affilié, NI autorisé, NI soutenu par Kick (Kick Streaming Pty Ltd) ou Nintendo. ","Es ist NICHT mit Kick (Kick Streaming Pty Ltd) oder Nintendo verbunden, von ihnen autorisiert oder unterstützt. ","NON è affiliato, autorizzato né sostenuto da Kick (Kick Streaming Pty Ltd) o da Nintendo. ","Het is NIET verbonden aan, goedgekeurd of gesteund door Kick (Kick Streaming Pty Ltd) of Nintendo. ","NÃO é afiliado, autorizado nem endossado pela Kick (Kick Streaming Pty Ltd) nem pela Nintendo. ",
+  "Kick(Kick Streaming Pty Ltd)およびNintendoとは提携・承認・支援の関係はありません。","与 Kick(Kick Streaming Pty Ltd)和 Nintendo 无任何隶属、授权或认可关系。","Kick (Kick Streaming Pty Ltd) 및 Nintendo와 제휴, 승인, 보증 관계가 없습니다. ")
+K("El ícono es arte propio.\n\n","The icon is original art.\n\n","L'icône est une création originale.\n\n","Das Symbol ist eigene Grafik.\n\n","L'icona è un'opera originale.\n\n","Het pictogram is eigen werk.\n\n","O ícone é arte própria.\n\n","アイコンはオリジナルです。\n\n","图标为原创作品。\n\n","아이콘은 직접 만든 그림입니다.\n\n")
+K("Solo muestra transmisiones en vivo públicas y gratuitas, igual que kick.com sin iniciar sesión. ",
+  "It only shows public, free live streams, the same as kick.com without signing in. ","Il n'affiche que des lives publics et gratuits, comme kick.com sans connexion. ","Es zeigt nur öffentliche, kostenlose Livestreams, wie kick.com ohne Anmeldung. ","Mostra solo dirette pubbliche e gratuite, come kick.com senza accesso. ","Het toont alleen openbare, gratis livestreams, net als kick.com zonder in te loggen. ","Mostra só transmissões ao vivo públicas e gratuitas, como a kick.com sem entrar. ",
+  "表示するのは公開の無料ライブ配信だけで、ログインしないkick.comと同じです。","只显示公开免费的直播,与未登录的 kick.com 相同。","공개된 무료 라이브 방송만 보여 주며, 로그인하지 않은 kick.com과 같습니다. ")
+K("Tiene login OAuth opcional para escribir; no accede a contenido pago. Los contenidos pertenecen a sus creadores.\n\n",
+  "Optional OAuth sign-in to write; it does not access paid content. All content belongs to its creators.\n\n","Connexion OAuth facultative pour écrire ; aucun accès au contenu payant. Les contenus appartiennent à leurs créateurs.\n\n","Optionale OAuth-Anmeldung zum Schreiben; kein Zugriff auf Bezahlinhalte. Die Inhalte gehören ihren Erstellern.\n\n","Accesso OAuth facoltativo per scrivere; non accede a contenuti a pagamento. I contenuti appartengono ai loro creatori.\n\n","Optionele OAuth-login om te schrijven; geen toegang tot betaalde inhoud. De inhoud is van de makers.\n\n","Login OAuth opcional para escrever; não acessa conteúdo pago. Os conteúdos pertencem aos seus criadores.\n\n",
+  "書き込み用のOAuthログインは任意です。有料コンテンツにはアクセスしません。コンテンツの権利は各クリエイターにあります。\n\n","可选 OAuth 登录用于发言;不访问付费内容。内容归其创作者所有。\n\n","글쓰기용 OAuth 로그인은 선택이며 유료 콘텐츠에는 접근하지 않습니다. 콘텐츠는 제작자의 것입니다.\n\n")
+K("Música de la intro: \"Clair de lune\" (Suite bergamasque) de Claude Debussy, piano: Laurens Goedhart (2011), ",
+  "Intro music: \"Clair de lune\" (Suite bergamasque) by Claude Debussy, piano: Laurens Goedhart (2011), ","Musique d'intro : \"Clair de lune\" (Suite bergamasque) de Claude Debussy, piano : Laurens Goedhart (2011), ","Intro-Musik: \"Clair de lune\" (Suite bergamasque) von Claude Debussy, Klavier: Laurens Goedhart (2011), ","Musica dell'intro: \"Clair de lune\" (Suite bergamasque) di Claude Debussy, pianoforte: Laurens Goedhart (2011), ","Intromuziek: \"Clair de lune\" (Suite bergamasque) van Claude Debussy, piano: Laurens Goedhart (2011), ","Música da intro: \"Clair de lune\" (Suite bergamasque) de Claude Debussy, piano: Laurens Goedhart (2011), ",
+  "イントロ音楽: クロード・ドビュッシー「月の光」(ベルガマスク組曲)、ピアノ: Laurens Goedhart(2011年)、","片头音乐: 克劳德·德彪西《月光》(贝加马斯克组曲),钢琴: Laurens Goedhart(2011),","인트로 음악: 클로드 드뷔시 '달빛' (베르가마스크 모음곡), 피아노: Laurens Goedhart (2011), ")
+K("dominio público (Public Domain Mark), vía Wikimedia Commons. Recortada a 45 s y comprimida.\n\n",
+  "public domain (Public Domain Mark), via Wikimedia Commons. Trimmed to 45 s and compressed.\n\n","domaine public (Public Domain Mark), via Wikimedia Commons. Coupée à 45 s et compressée.\n\n","gemeinfrei (Public Domain Mark), über Wikimedia Commons. Auf 45 s gekürzt und komprimiert.\n\n","pubblico dominio (Public Domain Mark), tramite Wikimedia Commons. Tagliata a 45 s e compressa.\n\n","publiek domein (Public Domain Mark), via Wikimedia Commons. Ingekort tot 45 s en gecomprimeerd.\n\n","domínio público (Public Domain Mark), via Wikimedia Commons. Cortada para 45 s e comprimida.\n\n",
+  "パブリックドメイン(Public Domain Mark)、Wikimedia Commons経由。45秒に短縮して圧縮。\n\n","公有领域(Public Domain Mark),来自 Wikimedia Commons。剪辑为 45 秒并压缩。\n\n","퍼블릭 도메인 (Public Domain Mark), Wikimedia Commons 제공. 45초로 자르고 압축했습니다.\n\n")
+K("Imagen de carga (intro y banner del canal): la eligió el usuario (wordmark KICK pixelado sobre negro).",
+  "Loading image (intro and channel banner): chosen by the user (pixel KICK wordmark on black).","Image de chargement (intro et bannière de chaîne) : choisie par l'utilisateur (logo KICK pixelisé sur noir).","Ladebild (Intro und Kanalbanner): vom Nutzer gewählt (verpixeltes KICK-Logo auf Schwarz).","Immagine di caricamento (intro e banner del canale): scelta dall'utente (scritta KICK pixelata su nero).","Laadafbeelding (intro en kanaalbanner): gekozen door de gebruiker (gepixeld KICK-woordmerk op zwart).","Imagem de carregamento (intro e banner do canal): escolhida pelo usuário (logo KICK pixelado sobre preto).",
+  "読み込み画像(イントロとチャンネルバナー): ユーザーが選んだもの(黒地にピクセルのKICKロゴ)。","加载图片(片头和频道横幅): 由用户选择(黑底像素风 KICK 字标)。","로딩 이미지 (인트로와 채널 배너): 사용자가 고른 이미지 (검은 바탕의 픽셀 KICK 로고).")
+K("Favoritos SD: marcadores locales, no follows de tu cuenta.","SD favorites: local bookmarks, not follows on your account.","Favoris SD : signets locaux, pas des suivis de ton compte.","SD-Favoriten: lokale Lesezeichen, keine Follows deines Kontos.","Preferiti SD: segnalibri locali, non follow del tuo account.","SD-favorieten: lokale bladwijzers, geen follows van je account.","Favoritos SD: marcadores locais, não follows da sua conta.",
+  "SDのお気に入り: ローカルのブックマークで、アカウントのフォローではありません。","SD 收藏夹: 本地书签,不是你账号的关注。","SD 즐겨찾기: 로컬 북마크이며 계정의 팔로우가 아닙니다.")
+K("Red: %s %s","Network: %s %s","Réseau : %s %s","Netzwerk: %s %s","Rete: %s %s","Netwerk: %s %s","Rede: %s %s","ネットワーク: %s %s","网络: %s %s","네트워크: %s %s")
+K("Kick no devolvio el canal (reintento).","Kick did not return the channel (retrying).","Kick n'a pas renvoyé la chaîne (nouvel essai).","Kick hat den Kanal nicht geliefert (neuer Versuch).","Kick non ha restituito il canale (nuovo tentativo).","Kick gaf het kanaal niet terug (opnieuw).","A Kick não retornou o canal (nova tentativa).","Kickからチャンネルが返されませんでした(再試行)。","Kick 未返回频道(重试中)。","Kick이 채널을 돌려주지 않았습니다 (다시 시도).")
+K("Reconectando...","Reconnecting...","Reconnexion...","Verbinde neu...","Riconnessione...","Opnieuw verbinden...","Reconectando...","再接続中...","正在重新连接...","다시 연결 중...")
+K("Reconectando... (%s, intento %d)","Reconnecting... (%s, attempt %d)","Reconnexion... (%s, essai %d)","Verbinde neu... (%s, Versuch %d)","Riconnessione... (%s, tentativo %d)","Opnieuw verbinden... (%s, poging %d)","Reconectando... (%s, tentativa %d)","再接続中...(%s、%d回目)","正在重新连接...(%s,第 %d 次)","다시 연결 중... (%s, %d번째)")
+K("Reconectando... (%s)","Reconnecting... (%s)","Reconnexion... (%s)","Verbinde neu... (%s)","Riconnessione... (%s)","Opnieuw verbinden... (%s)","Reconectando... (%s)","再接続中...(%s)","正在重新连接...(%s)","다시 연결 중... (%s)")
+K(" SIN AUDIO"," NO AUDIO"," SANS SON"," KEIN TON"," SENZA AUDIO"," GEEN GELUID"," SEM ÁUDIO"," 音声なし"," 无音频"," 오디오 없음")
+K("error de red","network error","erreur réseau","Netzwerkfehler","errore di rete","netwerkfout","erro de rede","ネットワークエラー","网络错误","네트워크 오류")
+K("no arranca","does not start","ne démarre pas","startet nicht","non parte","start niet","não inicia","開始しません","无法开始","시작되지 않음")
+K("no llegan segmentos","no segments arriving","aucun segment reçu","keine Segmente","nessun segmento in arrivo","geen segmenten","sem segmentos","セグメントが届きません","没有收到分段","세그먼트가 오지 않음")
+K("video congelado","video frozen","vidéo figée","Video eingefroren","video bloccato","video bevroren","vídeo congelado","映像が止まっています","画面卡住","영상 멈춤")
+K("audio detenido","audio stopped","son arrêté","Ton gestoppt","audio fermo","geluid gestopt","áudio parado","音声が止まっています","音频停止","오디오 멈춤")
+K("Esperando video...","Waiting for video...","En attente de la vidéo...","Warte auf Video...","In attesa del video...","Wachten op video...","Aguardando vídeo...","映像を待っています...","正在等待视频...","영상 기다리는 중...")
+K("%s%s%dx%d  %.0f fps  buf %.1fs  red %lld KB  desc %d%s","%s%s%dx%d  %.0f fps  buf %.1fs  net %lld KB  dec %d%s","%s%s%dx%d  %.0f ips  tampon %.1fs  réseau %lld Ko  déc %d%s","%s%s%dx%d  %.0f fps  Puffer %.1fs  Netz %lld KB  dek %d%s","%s%s%dx%d  %.0f fps  buf %.1fs  rete %lld KB  dec %d%s","%s%s%dx%d  %.0f fps  buf %.1fs  net %lld KB  dec %d%s","%s%s%dx%d  %.0f fps  buf %.1fs  rede %lld KB  dec %d%s",
+  "%s%s%dx%d  %.0f fps  バッファ %.1fs  通信 %lld KB  デコード %d%s","%s%s%dx%d  %.0f fps  缓冲 %.1fs  网络 %lld KB  解码 %d%s","%s%s%dx%d  %.0f fps  버퍼 %.1fs  네트워크 %lld KB  디코드 %d%s")
+K("  token renovado","  token renewed","  jeton renouvelé","  Token erneuert","  token rinnovato","  token vernieuwd","  token renovado","  トークン更新済み","  令牌已续期","  토큰 갱신됨")
+K("  reconexiones %d","  reconnections %d","  reconnexions %d","  Neuverbindungen %d","  riconnessioni %d","  herverbindingen %d","  reconexões %d","  再接続 %d","  重连 %d","  재연결 %d")

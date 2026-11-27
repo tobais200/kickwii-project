@@ -26,7 +26,7 @@ static int contains(const char *s,const char *q) {
 }
 static void *scan(void *unused) {
     (void)unused;kc_category *page=calloc(KC_PAGE_SIZE,sizeof(*page));
-    if(!page){LWP_MutexLock(mutex);snprintf(state.error,sizeof(state.error),"Sin memoria para categorias.");state.done=1;state.running=0;state.gen++;LWP_MutexUnlock(mutex);return NULL;}
+    if(!page){LWP_MutexLock(mutex);snprintf(state.error,sizeof(state.error),T("Sin memoria para categorias."));state.done=1;state.running=0;state.gen++;LWP_MutexUnlock(mutex);return NULL;}
     unsigned long previous_hash=0;int previous_n=0;
     for(int p=1;p<=128&&!cancelled;p++) {
         while(!cancelled){LWP_MutexLock(mutex);int wait=paused;LWP_MutexUnlock(mutex);if(!wait)break;usleep(100000);}
@@ -46,17 +46,17 @@ static void *scan(void *unused) {
         if(n<0) {snprintf(state.error,sizeof(state.error),"%s",err);state.done=1;}
         else if(meta.page!=p || (p>1&&n&&n==previous_n&&hash==previous_hash)) {
             state.limited=state.done=1;
-            snprintf(state.error,sizeof(state.error),"Limite de Kick: %d paginas disponibles (sin repetir).",state.pages);
+            snprintf(state.error,sizeof(state.error),T("Limite de Kick: %d paginas disponibles (sin repetir)."),state.pages);
         } else {
             state.total=meta.total;state.pages=p;int added=0;
             for(int i=0;i<n;i++) {
                 int j;for(j=0;j<state.count;j++)if(items[j].id==page[i].id)break;
                 if(j<state.count)continue;
-                if(state.count>=KC_CAP){state.limited=state.done=1;snprintf(state.error,sizeof(state.error),"Limite de memoria: %d categorias.",KC_CAP);break;}
+                if(state.count>=KC_CAP){state.limited=state.done=1;snprintf(state.error,sizeof(state.error),T("Limite de memoria: %d categorias."),KC_CAP);break;}
                 items[state.count++]=page[i];added++;
             }
             if(!n || p>=meta.last)state.done=1;
-            if(n&&!added){state.limited=state.done=1;snprintf(state.error,sizeof(state.error),"Kick repitio la pagina; se detuvo la carga.");}
+            if(n&&!added){state.limited=state.done=1;snprintf(state.error,sizeof(state.error),T("Kick repitio la pagina; se detuvo la carga."));}
             previous_hash=hash;previous_n=n;
         }
         state.gen++;int done=state.done;LWP_MutexUnlock(mutex);
@@ -69,9 +69,9 @@ int kc_start(void) {
     if(!initialized){if(LWP_MutexInit(&mutex,false))return 0;initialized=1;}
     LWP_MutexLock(mutex);if(state.started){LWP_MutexUnlock(mutex);return 1;}
     items=calloc(KC_CAP,sizeof(*items));memset(&state,0,sizeof(state));
-    if(!items){snprintf(state.error,sizeof(state.error),"Sin memoria para categorias.");LWP_MutexUnlock(mutex);return 0;}
+    if(!items){snprintf(state.error,sizeof(state.error),T("Sin memoria para categorias."));LWP_MutexUnlock(mutex);return 0;}
     state.started=state.running=1;state.gen=1;cancelled=paused=0;LWP_MutexUnlock(mutex);
-    if(LWP_CreateThread(&worker,scan,NULL,NULL,192*1024,30)){LWP_MutexLock(mutex);free(items);items=NULL;state.started=state.running=0;snprintf(state.error,sizeof(state.error),"No se pudo iniciar la carga de categorias.");LWP_MutexUnlock(mutex);return 0;}
+    if(LWP_CreateThread(&worker,scan,NULL,NULL,192*1024,30)){LWP_MutexLock(mutex);free(items);items=NULL;state.started=state.running=0;snprintf(state.error,sizeof(state.error),T("No se pudo iniciar la carga de categorias."));LWP_MutexUnlock(mutex);return 0;}
     return 1;
 }
 void kc_stop(void) {

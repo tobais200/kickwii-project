@@ -35,7 +35,7 @@ CXXFLAGS	=	$(CFLAGS)
 # Path stays correct when this Makefile is re-invoked from build/.
 # Custom script (rvl + libogc_common) places ff_tx_tab_* in MEM2 NOLOAD.
 # Passing -T suppresses the specs default, so kickwii.ld includes rvl.ld.
-LDFLAGS	=	-g $(MACHDEP) -Wl,--wrap=mkdir,--wrap=_rename_r -Wl,-Map,$(notdir $@).map -T$(KICKWII_MKDIR)ld/kickwii.ld
+LDFLAGS	=	-g $(MACHDEP) -Wl,--wrap=mkdir,--wrap=_rename_r -Wl,-Map,$(notdir $@).map -T$(KICKWII_MKDIR)ld/kickwii.ld $(EXTRA_LDFLAGS)
 
 
 #---------------------------------------------------------------------------------
