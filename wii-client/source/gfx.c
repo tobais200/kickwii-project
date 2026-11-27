@@ -192,8 +192,10 @@ void gfx_dump_xfb(const char *path) {
     free(z);
 }
 #endif
+static void cjk_fb_idle(void);
 void gfx_present(void) {
     guard_beat();
+    cjk_fb_idle();
 #ifdef KBD_BENCH
     u64 kb_pt0 = gettime();
 #endif
@@ -421,19 +423,22 @@ void gfx_cjk_select(int set) {
 static CjkSet cjk_fb[4];
 static unsigned char *cjk_fb_mem = NULL;
 static int cjk_fb_ok = 0, cjk_fb_failed = 0;
+static u64 cjk_fb_last_use = 0, cjk_fb_fail_at = 0;
+#define CJK_FB_IDLE_SECS 30u      /* free the common fallback after 30 s without a lookup in it */
+#define CJK_FB_RETRY_SECS 15u     /* after a failed inflate (no memory), try again at most this often */
 static void cjk_fb_release(void) {
     free(cjk_fb_mem); cjk_fb_mem = NULL; cjk_fb_ok = 0; cjk_fb_failed = 0;
     memset(cjk_fb, 0, sizeof(cjk_fb));
 }
 static void cjk_fb_ensure(void) {
     int i;
-    if (cjk_fb_ok || !cjk_fb_zlen) return;
-    if (cjk_fb_failed) { cjk_fb_failed--; return; }   /* after a failed inflate, retry only every 2000 lookups */
+    if (cjk_fb_ok || cjk_fb_failed || !cjk_fb_zlen) return;   /* after a failed inflate, cjk_fb_idle() allows a retry every 15 s */
     {
         uLongf len = cjk_fb_rawlen;
         unsigned char *m = malloc(len);
-        if (!m) { cjk_fb_failed = 2000; return; }
-        if (uncompress(m, &len, cjk_fb_z, cjk_fb_zlen) != Z_OK || len != cjk_fb_rawlen) { free(m); cjk_fb_failed = 2000; return; }
+        cjk_fb_failed = 1; cjk_fb_fail_at = gettime();   /* do not retry the ~934 KB inflate on every glyph */
+        if (!m) return;
+        if (uncompress(m, &len, cjk_fb_z, cjk_fb_zlen) != Z_OK || len != cjk_fb_rawlen) { free(m); return; }
         memset(cjk_fb, 0, sizeof(cjk_fb));
         for (i = 0; i < 4; i++) {
             const unsigned *h = (const unsigned *)(m + 16 * i);
@@ -443,8 +448,16 @@ static void cjk_fb_ensure(void) {
             cjk_fb[i].g = (const Glyph *)(m + h[2]);
             cjk_fb[i].bits = m + h[3];
         }
-        cjk_fb_mem = m; cjk_fb_ok = 1;
+        cjk_fb_mem = m; cjk_fb_ok = 1; cjk_fb_failed = 0; cjk_fb_last_use = gettime();
     }
+}
+/* Called from gfx_present (main thread, never while a glyph is being drawn). */
+static void cjk_fb_idle(void) {
+    u64 now = gettime();
+    if (cjk_fb_ok && ticks_to_secs(now - cjk_fb_last_use) >= CJK_FB_IDLE_SECS) {
+        cjk_fb_release();
+    }
+    if (cjk_fb_failed && !cjk_fb_ok && ticks_to_secs(now - cjk_fb_fail_at) >= CJK_FB_RETRY_SECS) cjk_fb_failed = 0;
 }
 static int cp_needs_cjk(int cp) {
     return (cp >= 0x1100 && cp <= 0x11FF) || (cp >= 0x2E80 && cp <= 0x9FFF)
@@ -506,6 +519,7 @@ static const Glyph *cjk_lookup(const Font *f, int cp) {
     /* Common fallback (body size, used for any font size with a y-offset). Lazy-inflated. */
     cjk_fb_ensure();
     if (cjk_fb_ok) {
+        cjk_fb_last_use = gettime();
         int fi2, try_sz;
         static const int base_asc_fb[4] = { 12, 13, 14, 28 };
         int prefer[] = { fi, 1, 2, 0, 3 };

@@ -683,7 +683,7 @@ static void draw_browse(void) {
 }
 static void browse_search(void) {
     char q[64];snprintf(q,sizeof(q),"%s",browse_query);
-    if(sui_text_input(T("Buscar categoria"),T("Busca entre las categorias cargadas. Vacio: todas."),q,sizeof(q))) {
+    if(sui_text_input(T("Buscar categoria"),T("Busca entre las categorias cargadas. Vacio: todas."),q,sizeof(q)-1)) {
         snprintf(browse_query,sizeof(browse_query),"%s",q);bsel=browse_top=0;browse_gen=-1;browse_sync();
     }
 }
